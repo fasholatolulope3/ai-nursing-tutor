@@ -41,26 +41,30 @@ onMounted(async () => {
                     <div class="h-px bg-white/10 my-2"></div>
 
                     <div>
-                        <h3 class="text-sm font-medium text-slate-300 uppercase tracking-wider mb-3">Patient Vitals</h3>
-                        <div class="grid grid-cols-2 gap-4">
-                            <!-- Mock Vitals for now, usually from session.current_state -->
+                        <h3 class="text-sm font-medium text-slate-300 uppercase tracking-wider mb-3">Patient Vitals (Initial)</h3>
+                        <div class="grid grid-cols-2 gap-4" v-if="session.scenario?.initial_patient_state?.vitals">
                             <div class="p-3 bg-black/40 rounded-lg border border-white/5">
                                 <div class="text-xs text-slate-500">HR</div>
-                                <div class="text-xl font-mono text-emerald-300">88 <span class="text-xs text-slate-600">bpm</span></div>
+                                <div class="text-xl font-mono text-emerald-300">{{ session.scenario.initial_patient_state.vitals.HR }} <span class="text-xs text-slate-600">bpm</span></div>
                             </div>
                             <div class="p-3 bg-black/40 rounded-lg border border-white/5">
                                 <div class="text-xs text-slate-500">BP</div>
-                                <div class="text-xl font-mono text-emerald-300">120/80</div>
+                                <div class="text-xl font-mono text-emerald-300">{{ session.scenario.initial_patient_state.vitals.BP }}</div>
                             </div>
                             <div class="p-3 bg-black/40 rounded-lg border border-white/5">
-                                <div class="text-xs text-slate-500">SaO2</div>
-                                <div class="text-xl font-mono text-emerald-300">98%</div>
+                                <div class="text-xs text-slate-500">SpO2</div>
+                                <div class="text-xl font-mono text-emerald-300">{{ session.scenario.initial_patient_state.vitals.SpO2 }}%</div>
                             </div>
-                             <div class="p-3 bg-black/40 rounded-lg border border-white/5">
+                            <div class="p-3 bg-black/40 rounded-lg border border-white/5">
                                 <div class="text-xs text-slate-500">RR</div>
-                                <div class="text-xl font-mono text-emerald-300">16</div>
+                                <div class="text-xl font-mono text-emerald-300">{{ session.scenario.initial_patient_state.vitals.RR }}</div>
+                            </div>
+                             <div class="p-3 bg-black/40 rounded-lg border border-white/5 col-span-2">
+                                <div class="text-xs text-slate-500">Temp</div>
+                                <div class="text-xl font-mono text-emerald-300">{{ session.scenario.initial_patient_state.vitals.Temp }}°C</div>
                             </div>
                         </div>
+                         <div v-else class="text-slate-500 italic">No vitals data available.</div>
                     </div>
                 </template>
             </div>

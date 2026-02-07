@@ -13,6 +13,7 @@ import {
   ChevronDown,
 } from 'lucide-vue-next';
 import { Link } from '@inertiajs/vue3';
+import { ref, onMounted } from 'vue';
 
 const props = defineProps<{
     open: boolean;
@@ -21,6 +22,18 @@ const props = defineProps<{
 const emit = defineEmits<{
     (e: 'toggle'): void;
 }>();
+
+const recentCases = ref<any[]>([]);
+
+onMounted(async () => {
+    try {
+        const axios = (await import('axios')).default;
+        const response = await axios.get('/api/v1/simulations');
+        recentCases.value = response.data;
+    } catch (error) {
+        console.error('Failed to load recent cases', error);
+    }
+});
 </script>
 
 <template>
@@ -58,16 +71,11 @@ const emit = defineEmits<{
         </div>
 
         <!-- Navigation Options -->
-        <div class="space-y-1 mb-8">
+        <div class="space-y-1 mb-8 overflow-y-auto flex-1 custom-scrollbar">
             <Link
                 v-for="item in [
                     { icon: Home, title: 'Dashboard', href: '/dashboard' },
-                    { icon: BookOpen, title: 'Scenarios', href: '/dashboard/scenarios', notifs: 3 },
-                    { icon: History, title: 'History', href: '/dashboard/history' },
-                    { icon: Activity, title: 'Performance', href: '/dashboard/performance' },
-                    { icon: Book, title: 'Guidelines', href: '/dashboard/guidelines' },
-                    { icon: FileText, title: 'Exam Prep', href: '/dashboard/exam-prep' },
-                    { icon: Award, title: 'Achievements', href: '/dashboard/achievements', notifs: 8 },
+                    { icon: BookOpen, title: 'Scenarios', href: '/dashboard/scenarios' },
                 ]"
                 :key="item.title"
                 :href="item.href"
@@ -86,10 +94,52 @@ const emit = defineEmits<{
                     {{ item.title }}
                 </span>
 
-                <span v-if="item.notifs && open" class="absolute right-3 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-xs text-white font-medium">
+                <!-- <span v-if="item.notifs && open" class="absolute right-3 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-xs text-white font-medium">
                     {{ item.notifs }}
-                </span>
+                </span> -->
             </Link>
+
+            <!-- Previous Clinical Cases -->
+            <div class="mt-6 mb-2 px-4" v-if="open">
+                <h3 class="text-xs font-semibold text-gray-500 dark:text-slate-500 uppercase tracking-wider">Previous Cases</h3>
+            </div>
+            <div class="space-y-1">
+                 <Link 
+                    v-for="session in recentCases"
+                    :key="session.id"
+                    :href="`/simulation/${session.id}`"
+                    class="w-full flex items-center h-9 px-2 rounded-md text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-slate-200 group transition-colors"
+                 >
+                     <div class="grid h-full w-12 place-content-center shrink-0">
+                        <History class="h-4 w-4 opacity-70 group-hover:opacity-100" />
+                     </div>
+                     <span :class="['text-xs font-medium truncate transition-opacity duration-200', open ? 'opacity-100' : 'opacity-0 w-0']">
+                         {{ session.scenario?.title || 'Untitled Session' }}
+                     </span>
+                 </Link>
+                 <div v-if="recentCases.length === 0 && open" class="px-4 text-xs text-gray-400 italic">
+                    No recent cases.
+                 </div>
+            </div>
+
+            <!-- Library -->
+             <div class="mt-6 mb-2 px-4" v-if="open">
+                <h3 class="text-xs font-semibold text-gray-500 dark:text-slate-500 uppercase tracking-wider">Reference Library</h3>
+            </div>
+             <div class="space-y-1">
+                 <button 
+                    v-for="(doc, idx) in ['ACL Protocol 2025.pdf', 'Pediatric Dosing.pdf']"
+                    :key="idx"
+                    class="w-full flex items-center h-9 px-2 rounded-md text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-slate-200 group transition-colors"
+                 >
+                     <div class="grid h-full w-12 place-content-center shrink-0">
+                        <FileText class="h-4 w-4 opacity-70 group-hover:opacity-100" />
+                     </div>
+                     <span :class="['text-xs font-medium truncate transition-opacity duration-200', open ? 'opacity-100' : 'opacity-0 w-0']">
+                         {{ doc }}
+                     </span>
+                 </button>
+            </div>
         </div>
 
         <!-- Bottom Config -->

@@ -4,135 +4,377 @@ namespace App\Services\AI;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Exception;
 
 class GeminiService
 {
+    protected string $baseUrl;
     protected string $apiKey;
-    protected string $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent';
+    protected string $model = 'gemini-3-flash-preview';
 
     public function __construct()
     {
+        $this->baseUrl = config('services.gemini.endpoint', 'https://generativelanguage.googleapis.com/v1beta/models');
         $this->apiKey = config('services.gemini.key');
+
+        if (empty($this->apiKey)) {
+            Log::error('Gemini API key is missing in AI\GeminiService.');
+        }
     }
 
     /**
-     * Generate a response from Gemini based on the conversation history.
+     * Process a clinical query with the Gemini API.
+     * 
+     * @param string $message
+     * @param \Illuminate\Http\UploadedFile|null $attachment
+     * @param string|null $previousSignature
+     * @return array
      */
-    public function generateResponse(array $history, array $currentContext)
+    public function handleClinicalQuery(string $message, $attachment = null, ?string $previousSignature = null): array
     {
-        // 1. Construct the prompt
-        $contents = $this->formatHistory($history);
-
-        // Add current patient context to the system instruction or latest message
-        $systemInstruction = $this->buildSystemInstruction($currentContext);
-
-        // 2. Call Gemini API
-        // Note: For production, use a dedicated library or robust error handling.
-        // We are using raw HTTP for transparency and control.
-
-        // Check if API key is set
         if (empty($this->apiKey)) {
-            return [
-                'content' => "I see you haven't configured the Gemini API Key yet. I am running in simulation mode. Based on the protocols, we should monitor the patient's vitals closely.",
-                'thought_signature' => "System: API Key missing. Returning fallback response.",
-                'new_state' => null // No state change
+            throw new Exception('Gemini API key is not configured.');
+        }
+
+        $url = "{$this->baseUrl}/{$this->model}:generateContent?key={$this->apiKey}";
+
+        // 1. Construct System Instruction
+        $systemInstruction = "You are the 'Clinical Context' AI Nursing Tutor.
+        
+Core Operational Directives:
+1. Process all inputs with high-level clinical reasoning.
+2. If an image (chart/lab) is provided, extract vital data.
+3. Follow the nursing process.
+4. Update the thoughtSignature to track state.
+
+Output strictly in JSON format:
+{
+    \"answer\": \"Detailed clinical response...\",
+    \"reasoning_trace\": [
+        {\"step\": 1, \"content\": \"Identifying primary symptom\", \"status\": \"completed\"},
+        {\"step\": 2, \"content\": \"Analyzing vitals\", \"status\": \"completed\"}
+    ],
+    \"extracted_data\": {\"BP\": \"120/80\", ...},
+    \"new_signature\": \"Updated summary of clinical state...\"
+}";
+
+        // 2. Build Payload
+        $parts = [];
+
+        $parts[] = ['text' => $message];
+
+        if ($attachment) {
+            $mimeType = $attachment->getMimeType();
+            $data = base64_encode(file_get_contents($attachment->getPathname()));
+
+            $parts[] = [
+                'inline_data' => [
+                    'mime_type' => $mimeType,
+                    'data' => $data
+                ]
             ];
         }
+
+        if ($previousSignature) {
+            $parts[] = ['text' => "\n[Context - Previous System State]: " . $previousSignature];
+        }
+
+        $payload = [
+            'contents' => [
+                [
+                    'parts' => $parts
+                ]
+            ],
+            'systemInstruction' => [
+                'parts' => [
+                    ['text' => $systemInstruction]
+                ]
+            ],
+            'generationConfig' => [
+                'temperature' => 0.4,
+                'responseMimeType' => 'application/json'
+            ]
+        ];
 
         try {
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
-            ])->post("{$this->baseUrl}?key={$this->apiKey}", [
-                        'contents' => $contents,
-                        'system_instruction' => [
-                            'parts' => [['text' => $systemInstruction]]
-                        ],
-                        'generationConfig' => [
-                            'temperature' => 0.7,
-                            'maxOutputTokens' => 1000,
-                        ]
-                    ]);
+            ])->post($url, $payload);
 
             if ($response->failed()) {
-                Log::error('Gemini API Error', $response->json());
-                throw new \Exception('Failed to communicate with AI Tutor.');
+                Log::error('Gemini API Error (Clinical Query)', [
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
+                throw new Exception('Gemini API request failed: ' . $response->body());
             }
 
-            $responseData = $response->json();
-            $rawText = $responseData['candidates'][0]['content']['parts'][0]['text'] ?? '';
+            $data = $response->json();
 
-            return $this->parseResponse($rawText);
+            // Log raw response for debugging
+            Log::info('Gemini Raw Response', ['candidates' => $data['candidates'] ?? 'no_candidates']);
 
-        } catch (\Exception $e) {
-            Log::error($e->getMessage());
-            return [
-                'content' => "I apologize, but I'm having trouble connecting to my knowledge base right now. Please try again.",
-                'thought_signature' => "Error: " . $e->getMessage(),
-                'new_state' => null
-            ];
+            $rawText = $data['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
+
+            // Cleanup markdown code blocks if present
+            $cleanText = preg_replace('/^```json\s*|\s*```$/', '', $rawText);
+
+            $parsed = json_decode($cleanText, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('Gemini JSON Parse Error', ['raw_text' => $rawText, 'clean_text' => $cleanText, 'json_error' => json_last_error_msg()]);
+                return [
+                    'answer' => $cleanText, // Fallback to raw text if JSON fails
+                    'reasoning_trace' => [],
+                    'extracted_data' => [],
+                    'new_signature' => $previousSignature
+                ];
+            }
+
+            // Handle if model returned a list/array instead of an object
+            if (array_is_list($parsed) && !empty($parsed)) {
+                Log::warning('Gemini returned a JSON list instead of an object', ['parsed' => $parsed]);
+                $firstItem = $parsed[0];
+
+                if (is_array($firstItem) && isset($firstItem['answer'])) {
+                    $parsed = $firstItem;
+                } elseif (is_string($firstItem)) {
+                    // If it's a list of strings, join them or take the first as answer
+                    $parsed = [
+                        'answer' => implode("\n", $parsed),
+                        'reasoning_trace' => [],
+                        'extracted_data' => [],
+                        'new_signature' => $previousSignature
+                    ];
+                } else {
+                    // Fallback for unknown array structure
+                    $parsed = [
+                        'answer' => json_encode($parsed),
+                        'reasoning_trace' => [],
+                        'extracted_data' => [],
+                        'new_signature' => $previousSignature
+                    ];
+                }
+            }
+
+            // Ensure 'answer' key exists
+            if (!isset($parsed['answer']) || empty($parsed['answer'])) {
+                Log::warning('Gemini Response Missing Answer Key', ['parsed' => $parsed]);
+                $parsed['answer'] = "I analyzed the document but couldn't generate a specific clinical answer. Please check the document content.";
+            }
+
+            return $parsed;
+
+        } catch (Exception $e) {
+            Log::error('Gemini Service Exception: ' . $e->getMessage());
+            throw $e;
         }
     }
-
     /**
-     * Format conversation history for Gemini API.
+     * Generate a clinical scenario based on parameters.
+     * 
+     * @param string $type
+     * @param string $difficulty
+     * @param string $role
+     * @return array
      */
-    protected function formatHistory(array $history)
+    public function generateScenario(string $type, string $difficulty, string $role): array
     {
-        return array_map(function ($turn) {
-            return [
-                'role' => $turn['role'] === 'user' ? 'user' : 'model',
-                'parts' => [['text' => $turn['content']]]
-            ];
-        }, $history);
+        if (empty($this->apiKey)) {
+            throw new Exception('Gemini API key is not configured.');
+        }
+
+        $url = "{$this->baseUrl}/{$this->model}:generateContent?key={$this->apiKey}";
+
+        $systemInstruction = <<<EOT
+You are Gemini 3, accessed via the Google Gemini API (v1beta).
+
+You are operating as a Clinical Scenario Factory for a nursing education
+platform built with Laravel (backend) and Vue 3 (frontend).
+
+This prompt will be sent directly to:
+models/gemini-3-flash-preview:generateContent
+
+You must follow Gemini API rules strictly.
+
+====================================
+MODE OF OPERATION
+====================================
+- Output JSON only
+- No markdown
+- No explanations
+- No chain-of-thought
+- No conversational text
+
+You must adapt reasoning depth using the Gemini thinking_level parameter
+provided in generationConfig.
+
+====================================
+OBJECTIVE
+====================================
+Generate a professional, agentic “Clinical Simulation Command Center”
+scenario used as a prebriefing page for high-stakes nursing simulations.
+
+The output will populate:
+- Scenario briefing
+- Learning objectives
+- Readiness indicators
+- Initial vitals
+- Agentic vision preview
+- Case metadata
+
+====================================
+INPUT VARIABLES
+====================================
+You will receive the following values at runtime:
+
+- scenario_type
+- difficulty_level (Beginner | Intermediate | Advanced)
+- learner_role
+- reference_documents (array)
+- thinking_level (low | medium | high)
+
+You MUST scale complexity, ambiguity, and clinical depth accordingly.
+
+====================================
+OUTPUT SCHEMA (STRICT)
+====================================
+Return a single JSON object:
+
+{
+  "scenario_briefing": {
+    "title": "",
+    "patient_profile": {
+      "age": "",
+      "gender": "",
+      "chief_complaint": "",
+      "clinical_setting": ""
+    },
+    "story": ""
+  },
+
+  "difficulty": "",
+
+  "learning_objectives": [
+    "",
+    "",
+    ""
+  ],
+
+  "prerequisites": {
+    "required_reading": [
+      {
+        "title": "",
+        "recommended": true
+      }
+    ]
+  },
+
+  "initial_vitals": {
+    "heart_rate": "",
+    "blood_pressure": "",
+    "respiratory_rate": "",
+    "temperature": "",
+    "oxygen_saturation": ""
+  },
+
+  "clinical_readiness_quiz": [
+    {
+      "question": "",
+      "options": ["", "", "", ""],
+      "correct_answer": ""
     }
+  ],
 
-    /**
-     * Build the system instruction / persona.
-     */
-    protected function buildSystemInstruction(array $context)
-    {
-        return <<<EOT
-You are an expert Clinical Nursing Tutor. Your goal is to guide a nursing student through a clinical simulation.
-Current Patient Context:
-- Condition: {$context['scenario_title']}
-- Vitals: HR {$context['vitals']['hr']}, BP {$context['vitals']['bp']}, RR {$context['vitals']['rr']}, SaO2 {$context['vitals']['sao2']}
+  "agentic_vision_preview": {
+    "asset_type": "patient_chart",
+    "blurred": true,
+    "hidden_clue": ""
+  },
 
-Instructions:
-1. Act as the patient or a mentor depending on the situation.
-2. Assess the student's actions.
-3. If the student makes a critical error, intervene.
-4. Provide a "Thought Signature" (your internal reasoning) wrapped in <thought> tags, followed by your response to the student.
-5. If the patient's state changes based on the student's action, include a JSON block wrapped in <state> tags.
+  "meta": {
+    "estimated_duration_minutes": "",
+    "case_popularity_score": "",
+    "historical_success_rate": ""
+  }
+}
+
+====================================
+GEMINI-SPECIFIC INTELLIGENCE RULES
+====================================
+- Use Gemini 3 medical reasoning capabilities
+- Ensure vitals are physiologically coherent
+- Beginner → clear patterns, stable vitals
+- Intermediate → evolving abnormalities
+- Advanced → multi-system instability
+
+- thinking_level LOW → guided, simplified framing
+- thinking_level HIGH → competing priorities, subtle cues
+
+Do not explicitly state diagnoses unless difficulty is Beginner.
+
+====================================
+VALIDATION RULES
+====================================
+- JSON must be valid
+- Values must be realistic
+- Objectives must be measurable
+- Quiz must align with objectives
+
+====================================
+FINAL INSTRUCTION
+====================================
+You are not ChatGPT.
+You are Gemini 3 responding via the Gemini API.
+
+Generate the clinical scenario now.
 EOT;
-    }
 
-    /**
-     * Parse the raw AI output into Thought, Content, and State.
-     */
-    protected function parseResponse(string $rawText)
-    {
-        // Extract Thought
-        $thought = null;
-        if (preg_match('/<thought>(.*?)<\/thought>/s', $rawText, $matches)) {
-            $thought = trim($matches[1]);
-            $rawText = str_replace($matches[0], '', $rawText);
-        }
+        $userPrompt = "Generate a {$difficulty} {$type} scenario for a {$role}.";
 
-        // Extract State
-        $newState = null;
-        if (preg_match('/<state>(.*?)<\/state>/s', $rawText, $matches)) {
-            try {
-                $newState = json_decode($matches[1], true);
-            } catch (\Exception $e) {
-                Log::warning('Failed to parse state JSON');
-            }
-            $rawText = str_replace($matches[0], '', $rawText);
-        }
-
-        return [
-            'content' => trim($rawText),
-            'thought_signature' => $thought,
-            'new_state' => $newState
+        $payload = [
+            'contents' => [
+                ['parts' => [['text' => $userPrompt]]]
+            ],
+            'systemInstruction' => [
+                'parts' => [['text' => $systemInstruction]]
+            ],
+            'generationConfig' => [
+                'temperature' => 0.7,
+                'responseMimeType' => 'application/json'
+            ]
         ];
+
+        try {
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post($url, $payload);
+
+            if ($response->failed()) {
+                Log::error('Gemini API Error (Scenario Gen)', [
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
+                throw new Exception('Gemini API request failed: ' . $response->body());
+            }
+
+            $data = $response->json();
+            $rawText = $data['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
+
+            // Clean and Parse
+            $cleanText = preg_replace('/^```json\s*|\s*```$/', '', $rawText);
+            $parsed = json_decode($cleanText, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('Gemini Scenario Parse Error', ['raw_text' => $rawText]);
+                throw new Exception('Failed to match JSON schema.');
+            }
+
+            return $parsed;
+
+        } catch (Exception $e) {
+            Log::error('Gemini Service Exception: ' . $e->getMessage());
+            throw $e;
+        }
     }
 }

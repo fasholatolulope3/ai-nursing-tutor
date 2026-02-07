@@ -1,78 +1,148 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 import DashboardLayout from '@/layouts/DashboardLayout.vue';
-import {
-  BookOpen,
-  Activity,
-  History,
-  Award,
-  TrendingUp,
-} from 'lucide-vue-next';
-import { ref, onMounted } from 'vue';
-import axios from 'axios';
+import ChatInterface from '@/components/dashboard/ChatInterface.vue';
+import ClinicalLabPanel from '@/components/dashboard/ClinicalLabPanel.vue';
+import { ref } from 'vue';
 
-// Stat type definition
-interface Stat {
-    label: string;
-    value: string;
-    trend: string;
-    icon: any;
-    color: string;
-    bg: string;
-}
+// --- State Management ---
+const isThinking = ref(false);
+const activeDocument = ref<any>(null); // Type: ActiveDocument
+const messages = ref<any[]>([
+    {
+        id: '1',
+        role: 'assistant',
+        content:
+            'Hello, nurse. I am ready to assist with your clinical reasoning. Please describe the patient case or upload a chart.',
+        timestamp: new Date(),
+    },
+]);
 
-const stats = ref<Stat[]>([]);
-const loading = ref(true);
+const thoughtTrace = ref<any[]>([]);
 
-const fetchStats = async () => {
+// --- Actions ---
+// --- Actions ---
+const previousThoughtSignature = ref<string | null>(null);
+
+const handleSendMessage = async (content: string, files: File[]) => {
+    // 1. Add User Message
+    const userMsgId = Date.now().toString();
+    messages.value.push({
+        id: userMsgId,
+        role: 'user',
+        content: content,
+        timestamp: new Date(),
+        attachments: files,
+    });
+
+    // 2. Set Thinking State
+    isThinking.value = true;
+    thoughtTrace.value = []; 
+
     try {
-        const response = await axios.get('/api/v1/dashboard/stats');
+        // 3. Prepare API Request
+        const formData = new FormData();
+        formData.append('message', content);
+        if (files.length > 0) {
+            formData.append('attachment', files[0]); // Handle first file for now
+        }
+        if (previousThoughtSignature.value) {
+            formData.append('previous_thought_signature', previousThoughtSignature.value);
+        }
+
+        // 4. Call Backend API
+        const apiClient = (await import('@/lib/axios')).default;
+        const response = await apiClient.post('/simulations/clinical-query', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
         const data = response.data;
 
-        stats.value = [
-            { label: 'Scenarios Completed', value: data.scenarios_completed.value, trend: data.scenarios_completed.trend, icon: BookOpen, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-            { label: 'Clinical Accuracy', value: data.clinical_accuracy.value, trend: data.clinical_accuracy.trend, icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-            { label: 'Time Spent', value: data.time_spent.value, trend: data.time_spent.trend, icon: History, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-            { label: 'Experience Points', value: data.experience_points.value, trend: data.experience_points.trend, icon: Award, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-        ];
+        // 5. Update State with Response
+        messages.value.push({
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: data.answer,
+            timestamp: new Date(),
+        });
+
+        // Update Thought Trace
+        if (data.reasoning_trace) {
+            thoughtTrace.value = data.reasoning_trace.map((step: any, index: number) => ({
+                id: `t-${index}`,
+                description: step.content,
+                status: step.status || 'completed',
+                details: step.details,
+            }));
+        }
+
+        // Update Clinical Lab (Simple Mapping)
+        if (data.extracted_data && Object.keys(data.extracted_data).length > 0) {
+            // Check if it's vitals or generic data
+            const facts = Object.entries(data.extracted_data).map(([key, value], index) => ({
+                id: `f-${index}`,
+                text: `${key.toUpperCase()}: ${value}`,
+                confidence: 0.95,
+                source: 'AI Extraction'
+            }));
+
+            activeDocument.value = {
+                id: 'doc-' + Date.now(),
+                name: files.length > 0 ? files[0].name : 'Clinical Analysis',
+                type: files.length > 0 && files[0].type.includes('image') ? 'image' : 'pdf',
+                url: files.length > 0 ? URL.createObjectURL(files[0]) : null, // Temp URL for preview
+                facts: facts
+            };
+        }
+
+        // Save Signature
+        if (data.new_signature) {
+            previousThoughtSignature.value = data.new_signature;
+        }
+
     } catch (error) {
-        console.error('Failed to fetch dashboard stats', error);
-        // Fallback or error state could be handled here
+        console.error('Clinical Query Failed:', error);
+        messages.value.push({
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: "I'm having trouble connecting to the clinical reasoning engine. Please try again.",
+            timestamp: new Date(),
+        });
     } finally {
-        loading.value = false;
+        isThinking.value = false;
     }
 };
 
-onMounted(() => {
-    fetchStats();
-});
+// Mock Document Selection (would come from sidebar or upload)
+const handleDocumentSelect = (doc: any) => {
+    activeDocument.value = doc;
+    // In real app, we might also set the document as context for the next query
+};
 </script>
 
 <template>
-    <Head title="Dashboard" />
-    
-    <DashboardLayout title="Dashboard" description="Welcome back to your clinical workspace">
-        <!-- Stats Grid -->
-        <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-             <div v-for="i in 4" :key="i" class="p-6 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 h-32 animate-pulse">
-                <div class="h-8 w-8 bg-gray-200 dark:bg-white/10 rounded-lg mb-4"></div>
-                <div class="h-6 w-3/4 bg-gray-200 dark:bg-white/10 rounded mb-2"></div>
-                <div class="h-4 w-1/2 bg-gray-200 dark:bg-white/10 rounded"></div>
-             </div>
-        </div>
+    <Head title="Clinical Dashboard" />
 
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div v-for="(stat, idx) in stats" :key="idx" class="p-6 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 shadow-sm hover:shadow-md transition-shadow">
-                <div class="flex items-center justify-between mb-4">
-                    <div :class="['p-2 rounded-lg', stat.bg, 'dark:bg-emerald-500/10']">
-                        <component :is="stat.icon" :class="['h-5 w-5', stat.color, 'dark:text-emerald-400']" />
-                    </div>
-                    <TrendingUp class="h-4 w-4 text-emerald-500" />
-                </div>
-                <h3 class="font-medium text-gray-600 dark:text-slate-400 mb-1">{{ stat.label }}</h3>
-                <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ stat.value }}</p>
-                <p class="text-sm text-emerald-600 dark:text-emerald-400 mt-1">{{ stat.trend }} from last month</p>
+    <DashboardLayout
+        title="Clinical Workspace"
+        description="Real-time Agentic Reasoning"
+    >
+        <!-- Main Layout: 3 Panels (Sidebar handled by Layout) -->
+        <div
+            class="-m-6 mt-0 flex h-[calc(100vh-8rem)] border-t border-gray-200 dark:border-white/10"
+        >
+            <!-- Center Stage: Chat & Reasoning -->
+            <div class="relative min-w-0 flex-1 bg-white dark:bg-black">
+                <ChatInterface
+                    :messages="messages"
+                    :is-thinking="isThinking"
+                    :thought-trace="thoughtTrace"
+                    @send-message="handleSendMessage"
+                />
             </div>
+
+            <!-- Right Panel: Clinical Lab -->
+            <ClinicalLabPanel :document="activeDocument" :is-loading="false" />
         </div>
     </DashboardLayout>
 </template>

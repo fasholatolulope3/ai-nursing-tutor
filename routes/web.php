@@ -8,10 +8,16 @@ Route::get('/', function () {
     return Inertia::render('LandingContext');
 })->name('home');
 
+Route::get('/ai', fn() => view('gemini'));
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
+
+    Route::get('dashboard/settings', function () {
+        return Inertia::render('Settings');
+    })->name('dashboard.settings');
 
     Route::get('dashboard/scenarios', function () {
         return Inertia::render('Dashboard/Scenarios');
@@ -36,10 +42,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard/achievements', function () {
         return Inertia::render('Dashboard/Achievements');
     })->name('dashboard.achievements');
-
-    Route::get('dashboard/settings', function () {
-        return Inertia::render('Dashboard/Settings');
-    })->name('dashboard.settings');
 
     Route::get('dashboard/help', function () {
         return Inertia::render('Dashboard/Help');

@@ -30,6 +30,7 @@ return [
 
     'gemini' => [
         'key' => env('GEMINI_API_KEY'),
+        'endpoint' => 'https://generativelanguage.googleapis.com/v1beta/models',
     ],
 
     'slack' => [

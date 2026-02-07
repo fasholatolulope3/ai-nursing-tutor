@@ -2,20 +2,43 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\ProfileController;
 
 Route::prefix('v1')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     })->middleware('auth:sanctum');
 
+    // Route::post('/simulations', [App\Http\Controllers\Api\V1\SimulationController::class, 'store']); // Temp exposed
+
     Route::middleware('auth:sanctum')->group(function () {
-        Route::get('/scenarios', [App\Http\Controllers\Api\ScenarioController::class, 'index']);
-        Route::get('/scenarios/{id}', [App\Http\Controllers\Api\ScenarioController::class, 'show']);
+        Route::apiResource('scenarios', \App\Http\Controllers\Api\V1\ScenarioController::class)->only(['index', 'show']);
 
-        Route::post('/simulations', [App\Http\Controllers\Api\SimulationController::class, 'start']);
-        Route::get('/simulations/{id}', [App\Http\Controllers\Api\SimulationController::class, 'show']);
-        Route::post('/simulations/{id}/chat', [App\Http\Controllers\Api\SimulationController::class, 'chat']);
+        // Simulation routes
+        Route::get('/simulations', [App\Http\Controllers\Api\V1\SimulationController::class, 'index']); // List user sessions
+        Route::post('/simulations', [App\Http\Controllers\Api\V1\SimulationController::class, 'store']);
+        // Route::post('/simulations/clinical-query', [App\Http\Controllers\Api\V1\SimulationController::class, 'handleClinicalQuery']); // Moved outside for access
+        Route::get('/simulations/{id}', [App\Http\Controllers\Api\V1\SimulationController::class, 'show']);
+        Route::post('/simulations/{id}/chat', [App\Http\Controllers\Api\V1\SimulationController::class, 'chat']);
 
-        Route::get('/dashboard/stats', [App\Http\Controllers\Api\DashboardController::class, 'stats']);
+        // Notifications
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+        Route::put('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+
+        // Profile
+        Route::get('/profile', [ProfileController::class, 'show']);
+        Route::put('/profile', [ProfileController::class, 'update']);
+        Route::post('/profile/avatar', [ProfileController::class, 'uploadAvatar']);
     });
+
+    // Gemini Integration
+    Route::post('/gemini', [\App\Http\Controllers\GeminiController::class, 'generate']);
+
+    // Clinical Query (Public Access for Dashboard)
+    Route::post('/simulations/clinical-query', [App\Http\Controllers\Api\V1\SimulationController::class, 'handleClinicalQuery']);
+
+    // Scenario Generation (Factory)
+    Route::post('/scenarios/generate', [\App\Http\Controllers\Api\V1\ScenarioController::class, 'generate']);
 });

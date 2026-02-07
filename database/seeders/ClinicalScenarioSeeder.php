@@ -9,13 +9,14 @@ class ClinicalScenarioSeeder extends Seeder
 {
     public function run(): void
     {
-        ClinicalScenario::create([
-            'title' => 'Sepsis Management',
-            'description' => 'A 65-year-old male presents with fever, hypotension, and altered mental status. Identify and manage sepsis early.',
+        // 1. Septic Shock Scenario
+        \App\Models\ClinicalScenario::create([
+            'title' => 'Septic Shock: Early Recognition',
+            'description' => 'A 65-year-old male admitted with pneumonia who is becoming increasingly hypotensive and tachycardia. Identification of early sepsis markers is critical.',
             'objective' => [
-                'Recognize signs of sepsis.',
-                'Initiate fluid resuscitation.',
-                'Administer antibiotics within 1 hour.',
+                'Identify signs of SIRS/Sepsis',
+                'Initiate Sepsis Bundle (Lactate, Cultures, Antibiotics, Fluids)',
+                'Monitor hemodynamic response'
             ],
             'complexity' => 'intermediate',
             'initial_patient_state' => [

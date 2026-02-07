@@ -49,5 +49,10 @@ export const simulationService = {
     async sendChat(simulationId: number, message: string): Promise<{ user_turn: ConversationTurn; ai_turn: ConversationTurn }> {
         const response = await apiClient.post(`/simulations/${simulationId}/chat`, { message });
         return response.data;
+    },
+
+    async generateScenario(params: { type: string; difficulty: string; role: string }): Promise<Scenario> {
+        const response = await apiClient.post('/scenarios/generate', params);
+        return response.data.data;
     }
 };
