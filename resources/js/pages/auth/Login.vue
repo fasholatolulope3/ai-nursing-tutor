@@ -39,6 +39,14 @@ defineProps<{
             v-slot="{ errors, processing }"
             class="flex flex-col gap-6"
         >
+            <!-- Loading Overlay -->
+            <div v-if="processing" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm transition-all duration-300">
+                <div class="flex flex-col items-center gap-4 p-6 rounded-xl bg-white/5 border border-white/10 shadow-2xl">
+                    <Spinner class="size-12 text-emerald-500" />
+                    <p class="text-sm font-medium text-white/90 animate-pulse">Logging in...</p>
+                </div>
+            </div>
+
             <div class="grid gap-6">
                 <div class="grid gap-2">
                     <Label for="email">Email address</Label>

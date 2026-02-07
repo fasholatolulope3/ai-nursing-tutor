@@ -11,7 +11,7 @@ defineProps<{
 
 <template>
     <div
-        class="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10"
+        class="flex min-h-svh flex-col items-center justify-center gap-6 bg-black p-6 md:p-10 text-white"
     >
         <div class="w-full max-w-sm">
             <div class="flex flex-col gap-8">
@@ -20,18 +20,14 @@ defineProps<{
                         :href="home()"
                         class="flex flex-col items-center gap-2 font-medium"
                     >
-                        <div
-                            class="mb-1 flex h-9 w-9 items-center justify-center rounded-md"
-                        >
-                            <AppLogoIcon
-                                class="size-9 fill-current text-[var(--foreground)] dark:text-white"
-                            />
+                        <div class="flex items-center gap-2">
+                             <div class="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-[0_0_15px_rgba(16,185,129,0.4)]"></div>
                         </div>
                         <span class="sr-only">{{ title }}</span>
                     </Link>
                     <div class="space-y-2 text-center">
-                        <h1 class="text-xl font-medium">{{ title }}</h1>
-                        <p class="text-center text-sm text-muted-foreground">
+                        <h1 class="text-2xl font-light tracking-tight text-white">{{ title }}</h1>
+                        <p class="text-center text-sm text-slate-400">
                             {{ description }}
                         </p>
                     </div>
