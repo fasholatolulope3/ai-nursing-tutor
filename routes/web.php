@@ -23,9 +23,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard/Scenarios');
     })->name('dashboard.scenarios');
 
-    Route::get('dashboard/history', function () {
-        return Inertia::render('Dashboard/History');
-    })->name('dashboard.history');
+    Route::get('dashboard/scenarios/{id}', [\App\Http\Controllers\ScenarioController::class, 'show'])->name('dashboard.scenarios.show');
+
+    Route::get('dashboard/history', [\App\Http\Controllers\HistoryController::class, 'index'])->name('dashboard.history');
+    Route::delete('dashboard/history/{id}', [\App\Http\Controllers\HistoryController::class, 'destroy'])->name('dashboard.history.destroy');
 
     Route::get('dashboard/performance', function () {
         return Inertia::render('Dashboard/Performance');

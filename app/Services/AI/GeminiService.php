@@ -10,7 +10,7 @@ class GeminiService
 {
     protected string $baseUrl;
     protected string $apiKey;
-    protected string $model = 'gemini-3-flash-preview';
+    protected string $model = 'gemini-1.5-flash';
 
     public function __construct()
     {
@@ -99,7 +99,7 @@ Output strictly in JSON format:
         try {
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
-            ])->post($url, $payload);
+            ])->retry(3, 2000)->post($url, $payload);
 
             if ($response->failed()) {
                 Log::error('Gemini API Error (Clinical Query)', [
@@ -127,7 +127,8 @@ Output strictly in JSON format:
                     'answer' => $cleanText, // Fallback to raw text if JSON fails
                     'reasoning_trace' => [],
                     'extracted_data' => [],
-                    'new_signature' => $previousSignature
+                    'new_signature' => $previousSignature,
+                    'related_topics' => []
                 ];
             }
 
@@ -144,7 +145,8 @@ Output strictly in JSON format:
                         'answer' => implode("\n", $parsed),
                         'reasoning_trace' => [],
                         'extracted_data' => [],
-                        'new_signature' => $previousSignature
+                        'new_signature' => $previousSignature,
+                        'related_topics' => []
                     ];
                 } else {
                     // Fallback for unknown array structure
@@ -152,7 +154,8 @@ Output strictly in JSON format:
                         'answer' => json_encode($parsed),
                         'reasoning_trace' => [],
                         'extracted_data' => [],
-                        'new_signature' => $previousSignature
+                        'new_signature' => $previousSignature,
+                        'related_topics' => []
                     ];
                 }
             }
@@ -178,7 +181,7 @@ Output strictly in JSON format:
      * @param string $role
      * @return array
      */
-    public function generateScenario(string $type, string $difficulty, string $role): array
+    public function generateScenario(string $type, string $difficulty, string $role, ?string $description = null): array
     {
         if (empty($this->apiKey)) {
             throw new Exception('Gemini API key is not configured.');
@@ -187,14 +190,12 @@ Output strictly in JSON format:
         $url = "{$this->baseUrl}/{$this->model}:generateContent?key={$this->apiKey}";
 
         $systemInstruction = <<<EOT
-You are Gemini 3, accessed via the Google Gemini API (v1beta).
+You are Gemini, accessed via the Google Gemini API (v1beta).
 
 You are operating as a Clinical Scenario Factory for a nursing education
 platform built with Laravel (backend) and Vue 3 (frontend).
 
 This prompt will be sent directly to:
-models/gemini-3-flash-preview:generateContent
-
 You must follow Gemini API rules strictly.
 
 ====================================
@@ -302,7 +303,7 @@ Return a single JSON object:
 ====================================
 GEMINI-SPECIFIC INTELLIGENCE RULES
 ====================================
-- Use Gemini 3 medical reasoning capabilities
+- Use Gemini 1.5 Flash medical reasoning capabilities
 - Ensure vitals are physiologically coherent
 - Beginner → clear patterns, stable vitals
 - Intermediate → evolving abnormalities
@@ -325,12 +326,15 @@ VALIDATION RULES
 FINAL INSTRUCTION
 ====================================
 You are not ChatGPT.
-You are Gemini 3 responding via the Gemini API.
+You are Gemini responding via the Gemini API.
 
 Generate the clinical scenario now.
 EOT;
 
         $userPrompt = "Generate a {$difficulty} {$type} scenario for a {$role}.";
+        if ($description) {
+            $userPrompt .= " Context/Description: {$description}";
+        }
 
         $payload = [
             'contents' => [
@@ -348,7 +352,7 @@ EOT;
         try {
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
-            ])->post($url, $payload);
+            ])->timeout(90)->retry(3, 2000)->post($url, $payload);
 
             if ($response->failed()) {
                 Log::error('Gemini API Error (Scenario Gen)', [
@@ -371,9 +375,135 @@ EOT;
             }
 
             return $parsed;
+        } catch (Exception $e) {
+            // Check for Quota Exceeded (429) OR Model Not Found (404) and use Fallback
+            if (
+                str_contains($e->getMessage(), '429') ||
+                str_contains($e->getMessage(), '404') ||
+                str_contains(strtolower($e->getMessage()), 'quota')
+            ) {
+                Log::warning('Gemini API Error. Using Fallback Data for Scenario.', ['error' => $e->getMessage()]);
+                $fallbacks = FallbackData::getScenarios();
+                return $fallbacks[array_rand($fallbacks)];
+            }
+
+            Log::error('Gemini Service Exception: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+    /**
+     * Handle an interactive simulation turn.
+     * 
+     * @param \App\Models\SimulationSession $session
+     * @param string $message
+     * @return array
+     */
+    public function handleSimulationTurn(\App\Models\SimulationSession $session, string $message): array
+    {
+        if (empty($this->apiKey)) {
+            throw new Exception('Gemini API key is not configured.');
+        }
+
+        $url = "{$this->baseUrl}/{$this->model}:generateContent?key={$this->apiKey}";
+
+        $scenario = $session->scenario;
+        $history = $session->turns()->latest()->take(10)->get()->reverse();
+
+        // 1. Construct System Instruction for Simulation
+        $systemInstruction = "You are Gemini, acting as a Clinical Simulation Engine.
+        
+CASE CONTEXT:
+Scenario: {$scenario->title}
+Difficulty: {$scenario->complexity}
+Initial State: " . json_encode($scenario->initial_patient_state) . "
+
+OPERATIONAL DIRECTIVES:
+1. Roleplay realistically based on the scenario.
+2. If the user is a nurse, respond as the patient, a family member, or the medical system.
+3. Maintain clinical consistency.
+4. Update the thoughtSignature to track the evolving clinical state.
+5. Provide a reasoning_trace explaining the AI's logic.
+
+Output strictly in JSON format:
+{
+    \"answer\": \"The spoken response or system message...\",
+    \"reasoning_trace\": [
+        {\"step\": 1, \"content\": \"Evaluating nurse intervention\", \"status\": \"completed\"},
+        {\"step\": 2, \"content\": \"Determining patient physiological response\", \"status\": \"completed\"}
+    ],
+    \"new_vitals\": {\"HR\": 88, \"BP\": \"120/80\", ...}, // Only if vitals change
+    \"new_signature\": \"Brief summary of current patient state...\"
+}";
+
+        // 2. Build Payload
+        $parts = [];
+
+        // Add chat history
+        foreach ($history as $turn) {
+            $parts[] = ['text' => "({$turn->role}): {$turn->content}"];
+        }
+
+        // Add current message
+        $parts[] = ['text' => "(user): {$message}"];
+
+        $payload = [
+            'contents' => [
+                [
+                    'parts' => $parts
+                ]
+            ],
+            'systemInstruction' => [
+                'parts' => [
+                    ['text' => $systemInstruction]
+                ]
+            ],
+            'generationConfig' => [
+                'temperature' => 0.7,
+                'responseMimeType' => 'application/json'
+            ]
+        ];
+
+        try {
+            Log::info('Gemini Simulation Request Payload', ['url' => $url, 'payload' => $payload]);
+
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->timeout(60)->retry(3, 2000)->post($url, $payload);
+
+            Log::info('Gemini Simulation Raw Response', [
+                'status' => $response->status(),
+                'headers' => $response->headers(),
+                'body' => $response->body()
+            ]);
+
+            if ($response->failed()) {
+                Log::error('Gemini API Error (Simulation Turn)', [
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
+                throw new Exception('Gemini API request failed.');
+            }
+
+            $data = $response->json();
+            $rawText = $data['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
+            $cleanText = preg_replace('/^```json\s*|\s*```$/', '', $rawText);
+            $parsed = json_decode($cleanText, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('Gemini Simulation Turn Parse Error', ['raw_text' => $rawText]);
+                return [
+                    'answer' => $cleanText,
+                    'reasoning_trace' => [],
+                    'new_signature' => 'Error parsing state'
+                ];
+            }
+
+            return $parsed;
 
         } catch (Exception $e) {
-            Log::error('Gemini Service Exception: ' . $e->getMessage());
+            Log::error('Gemini Service Exception (Simulation): ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
             throw $e;
         }
     }

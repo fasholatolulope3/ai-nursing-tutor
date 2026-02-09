@@ -34,20 +34,39 @@ class SimulationController extends Controller
     /**
      * Start a new simulation session.
      */
+    public function start(Request $request)
+    {
+        set_time_limit(60);
+
+        try {
+            \Illuminate\Support\Facades\Log::info('Explicit Start Simulation Request', ['user_id' => $request->user()->id]);
+
+            $validated = $request->validate([
+                'scenario_id' => 'required|exists:clinical_scenarios,id',
+            ]);
+
+            $session = \App\Models\SimulationSession::create([
+                'user_id' => $request->user()->id,
+                'scenario_id' => $validated['scenario_id'],
+                'status' => 'active',
+                'started_at' => now(),
+            ]);
+
+            \Illuminate\Support\Facades\Log::info('Session Created via Start Endpoint', ['session_id' => $session->id]);
+
+            return response()->json($session->load('scenario'), 201);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Start Endpoint Failed: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to initialize session'], 500);
+        }
+    }
+
+    /**
+     * Start a new simulation session (Resource Store).
+     */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'scenario_id' => 'required|exists:clinical_scenarios,id',
-        ]);
-
-        $session = \App\Models\SimulationSession::create([
-            'user_id' => $request->user()->id,
-            'clinical_scenario_id' => $validated['scenario_id'],
-            'status' => 'active',
-            'start_time' => now(),
-        ]);
-
-        return response()->json($session->load('scenario'), 201);
+        return $this->start($request);
     }
 
     /**
@@ -77,7 +96,7 @@ class SimulationController extends Controller
             'message' => 'required|string',
         ]);
 
-        $session = \App\Models\SimulationSession::findOrFail($id);
+        $session = \App\Models\SimulationSession::with('scenario')->findOrFail($id);
 
         if ($session->user_id !== $request->user()->id) {
             abort(403);
@@ -90,21 +109,43 @@ class SimulationController extends Controller
         ]);
 
         // 2. AI Processing
-        // $aiResponseContent = $this->geminiService->processTurn($session, $request->message);
-        // For now, let's just echo back or use a simple response if processTurn isn't ready.
-        // But we are focusing on handleClinicalQuery below.
-        $aiResponseContent = "Simulation response placeholder.";
+        try {
+            $aiResponse = $this->geminiService->handleSimulationTurn($session, $request->message);
 
-        // 3. AI Turn
-        $aiTurn = $session->turns()->create([
-            'role' => 'ai',
-            'content' => $aiResponseContent,
-        ]);
+            // 3. AI Turn
+            $aiTurn = $session->turns()->create([
+                'role' => 'ai',
+                'content' => $aiResponse['answer'] ?? 'I apologize, I am having trouble responding right now.',
+            ]);
 
-        return response()->json([
-            'user_turn' => $userTurn,
-            'ai_turn' => $aiTurn,
-        ]);
+            // 4. Save Thought Signature (Reasoning Trace)
+            if (!empty($aiResponse['reasoning_trace'])) {
+                \App\Models\ThoughtSignature::create([
+                    'turn_id' => $aiTurn->id,
+                    'reasoning_trace' => $aiResponse['reasoning_trace'],
+                    'confidence' => 0.95, // Default for now
+                    'tags' => [],
+                ]);
+            }
+
+            // 5. Optionally update session state (e.g. status) if needed
+            // if (isset($aiResponse['new_signature'])) { ... }
+
+            return response()->json([
+                'user_turn' => $userTurn,
+                'ai_turn' => $aiTurn->load('session'), // Load session if needed by frontend
+                'reasoning_trace' => $aiResponse['reasoning_trace'] ?? [],
+            ]);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Simulation Chat Failed: ' . $e->getMessage());
+
+            if (str_contains($e->getMessage(), '429') || str_contains($e->getMessage(), 'Quota')) {
+                return response()->json(['error' => 'AI Usage Limit Reached. Please wait a moment.'], 429);
+            }
+
+            return response()->json(['error' => 'AI reasoning failed'], 500);
+        }
     }
 
     /**
@@ -139,10 +180,53 @@ class SimulationController extends Controller
                 $request->file('attachment'),
                 $validated['previous_thought_signature'] ?? null
             );
+
+            // Save Interaction
+            if ($request->user()) {
+                \App\Models\AiInteraction::create([
+                    'user_id' => $request->user()->id,
+                    'prompt' => $message,
+                    'ai_response' => $response,
+                ]);
+            }
+
             return response()->json($response);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Clinical Query Controller Error: ' . $e->getMessage());
+
+            if (str_contains($e->getMessage(), '429') || str_contains($e->getMessage(), 'Quota')) {
+                return response()->json(['error' => 'AI Usage Limit Reached. Please wait a moment.'], 429);
+            }
+
             return response()->json(['error' => 'Processing failed'], 500);
         }
+    }
+
+    /**
+     * Get a specific AI interaction.
+     */
+    public function getInteraction(Request $request, string $id)
+    {
+        $interaction = \App\Models\AiInteraction::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        return response()->json($interaction);
+    }
+
+    /**
+     * Get the last AI interaction for the user.
+     */
+    public function getLastInteraction(Request $request)
+    {
+        $interaction = \App\Models\AiInteraction::where('user_id', $request->user()->id)
+            ->latest()
+            ->first();
+
+        if (!$interaction) {
+            return response()->json(null); // No content
+        }
+
+        return response()->json($interaction);
     }
 }

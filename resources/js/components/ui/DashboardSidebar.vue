@@ -13,7 +13,9 @@ import {
   ChevronDown,
 } from 'lucide-vue-next';
 import { Link } from '@inertiajs/vue3';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
+import { useAdaptiveStudy } from '@/composables/useAdaptiveStudy';
+import axios from 'axios';
 
 const props = defineProps<{
     open: boolean;
@@ -24,14 +26,61 @@ const emit = defineEmits<{
 }>();
 
 const recentCases = ref<any[]>([]);
+const references = ref<any[]>([]);
+const recommendedScenarios = ref<any[]>([]);
+const recommendedReferences = ref<any[]>([]);
+const { currentTopics, isRecommendationsActive } = useAdaptiveStudy();
+
+const isLibraryOpen = ref(true);
+
+const fetchRecommendations = async () => {
+    if (!isRecommendationsActive.value) return;
+    
+    try {
+        const response = await axios.post('/api/v1/recommendations', {
+            topics: currentTopics.value
+        });
+        
+        recommendedScenarios.value = response.data.scenarios || [];
+        recommendedReferences.value = response.data.references || [];
+    } catch (error) {
+        console.error('Failed to fetch recommendations', error);
+    }
+};
+
+watch(currentTopics, () => {
+    fetchRecommendations();
+});
 
 onMounted(async () => {
+    // 1. Fetch References (Public/Robust)
     try {
-        const axios = (await import('axios')).default;
-        const response = await axios.get('/api/v1/simulations');
-        recentCases.value = response.data;
+        const response = await axios.get('/api/v1/references');
+        if (Array.isArray(response.data)) {
+            references.value = response.data;
+        } else if (response.data && Array.isArray(response.data.data)) {
+            // Handle Laravel Resource wrap
+            references.value = response.data.data;
+        } else {
+            console.error('References response is not an array:', response.data);
+            references.value = [];
+        }
     } catch (error) {
-        console.error('Failed to load recent cases', error);
+        console.error('Failed to load references', error);
+    }
+
+    // 2. Fetch Simulations (Requires Auth)
+    try {
+        const response = await axios.get('/api/v1/simulations');
+        if (Array.isArray(response.data)) {
+             recentCases.value = response.data;
+        } else if (response.data && Array.isArray(response.data.data)) {
+             recentCases.value = response.data.data;
+        } else {
+             recentCases.value = [];
+        }
+    } catch (error) {
+        console.warn('Failed to load simulations', error);
     }
 });
 </script>
@@ -39,12 +88,12 @@ onMounted(async () => {
 <template>
     <nav
         :class="[
-            'sticky top-0 h-screen shrink-0 border-r transition-all duration-300 ease-in-out border-gray-200 dark:border-white/10 bg-white dark:bg-black p-2 shadow-sm z-20',
-            open ? 'w-64' : 'w-20'
+            'fixed inset-y-0 left-0 z-50 flex flex-col h-screen border-r bg-white dark:bg-black transition-all duration-300 ease-in-out border-gray-200 dark:border-white/10 p-2 shadow-xl lg:sticky lg:top-0 lg:shadow-sm lg:z-20',
+            open ? 'translate-x-0 w-64' : '-translate-x-full w-64 lg:translate-x-0 lg:w-20'
         ]"
     >
         <!-- Title Section -->
-        <div class="mb-6 border-b border-gray-200 dark:border-white/10 pb-4">
+        <div class="mb-6 border-b border-gray-200 dark:border-white/10 pb-4 shrink-0">
             <div class="flex cursor-pointer items-center justify-between rounded-md p-2 transition-colors hover:bg-gray-50 dark:hover:bg-white/5">
                 <div class="flex items-center gap-3 overflow-hidden">
                     <!-- Logo -->
@@ -70,12 +119,13 @@ onMounted(async () => {
             </div>
         </div>
 
-        <!-- Navigation Options -->
-        <div class="space-y-1 mb-8 overflow-y-auto flex-1 custom-scrollbar">
+        <!-- Navigation Options - Scrollable Area -->
+        <div class="flex-1 overflow-y-auto custom-scrollbar space-y-1 min-h-0 pb-4">
             <Link
                 v-for="item in [
                     { icon: Home, title: 'Dashboard', href: '/dashboard' },
                     { icon: BookOpen, title: 'Scenarios', href: '/dashboard/scenarios' },
+                    { icon: History, title: 'History', href: '/dashboard/history' },
                 ]"
                 :key="item.title"
                 :href="item.href"
@@ -93,61 +143,89 @@ onMounted(async () => {
                 <span :class="['text-sm font-medium transition-opacity duration-200 whitespace-nowrap', open ? 'opacity-100' : 'opacity-0 w-0']">
                     {{ item.title }}
                 </span>
-
-                <!-- <span v-if="item.notifs && open" class="absolute right-3 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-xs text-white font-medium">
-                    {{ item.notifs }}
-                </span> -->
             </Link>
 
-            <!-- Previous Clinical Cases -->
-            <div class="mt-6 mb-2 px-4" v-if="open">
-                <h3 class="text-xs font-semibold text-gray-500 dark:text-slate-500 uppercase tracking-wider">Previous Cases</h3>
+            <!-- Previous Cases (from screenshot) -->
+            <div v-if="recentCases.length > 0 && open" class="mt-6 mb-2 px-4 animate-fadeIn">
+                <h3 class="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">
+                    Previous Cases
+                </h3>
             </div>
-            <div class="space-y-1">
-                 <Link 
-                    v-for="session in recentCases"
-                    :key="session.id"
+            <div v-if="recentCases.length > 0" class="space-y-0.5">
+                <Link 
+                    v-for="session in recentCases.slice(0, 5)"
+                    :key="'recent-'+session.id"
                     :href="`/simulation/${session.id}`"
-                    class="w-full flex items-center h-9 px-2 rounded-md text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-slate-200 group transition-colors"
-                 >
-                     <div class="grid h-full w-12 place-content-center shrink-0">
-                        <History class="h-4 w-4 opacity-70 group-hover:opacity-100" />
-                     </div>
-                     <span :class="['text-xs font-medium truncate transition-opacity duration-200', open ? 'opacity-100' : 'opacity-0 w-0']">
-                         {{ session.scenario?.title || 'Untitled Session' }}
-                     </span>
-                 </Link>
-                 <div v-if="recentCases.length === 0 && open" class="px-4 text-xs text-gray-400 italic">
-                    No recent cases.
-                 </div>
+                    class="w-full flex items-center h-9 px-2 rounded-md hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 text-gray-500 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-300 group transition-colors"
+                    :title="session.scenario?.title"
+                >
+                    <div class="grid h-full w-12 place-content-center shrink-0">
+                        <History class="h-4 w-4 opacity-40 group-hover:opacity-100" />
+                    </div>
+                    <span :class="['text-xs font-medium truncate transition-opacity duration-200', open ? 'opacity-100' : 'opacity-0 w-0']">
+                        {{ session.scenario?.title || 'Sim Session' }}
+                    </span>
+                </Link>
+            </div>
+
+            <!-- Recommended Study -->
+            <div v-if="isRecommendationsActive && open" class="mt-6 mb-2 px-4 animate-fadeIn">
+                <h3 class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                    <Sparkles class="w-3 h-3" /> Recommended
+                </h3>
+            </div>
+            <div v-if="isRecommendationsActive" class="space-y-1 animate-fadeIn">
+                <Link 
+                    v-for="scenario in recommendedScenarios"
+                    :key="'rec-s-'+scenario.id"
+                    :href="`/scenarios/${scenario.id}`"
+                    class="w-full flex items-center h-9 px-2 rounded-md bg-emerald-50/50 dark:bg-emerald-900/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/20 group transition-colors"
+                >
+                    <div class="grid h-full w-12 place-content-center shrink-0">
+                        <Activity class="h-4 w-4" />
+                    </div>
+                    <span :class="['text-xs font-medium truncate transition-opacity duration-200', open ? 'opacity-100' : 'opacity-0 w-0']">
+                        {{ scenario.title }}
+                    </span>
+                </Link>
             </div>
 
             <!-- Library -->
-             <div class="mt-6 mb-2 px-4" v-if="open">
-                <h3 class="text-xs font-semibold text-gray-500 dark:text-slate-500 uppercase tracking-wider">Reference Library</h3>
+            <div class="mt-8 mb-2 px-4" v-if="open">
+                <button 
+                    @click="isLibraryOpen = !isLibraryOpen"
+                    class="w-full flex items-center justify-between text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors group"
+                >
+                    <span class="flex items-center gap-2">
+                        <BookOpen class="w-3 h-3 text-emerald-500/50 group-hover:text-emerald-500" /> Reference Library
+                    </span>
+                    <ChevronDown :class="['w-3 h-3 transition-transform duration-300', isLibraryOpen ? '' : '-rotate-90']" />
+                </button>
             </div>
-             <div class="space-y-1">
-                 <button 
-                    v-for="(doc, idx) in ['ACL Protocol 2025.pdf', 'Pediatric Dosing.pdf']"
-                    :key="idx"
-                    class="w-full flex items-center h-9 px-2 rounded-md text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-slate-200 group transition-colors"
-                 >
-                     <div class="grid h-full w-12 place-content-center shrink-0">
-                        <FileText class="h-4 w-4 opacity-70 group-hover:opacity-100" />
-                     </div>
-                     <span :class="['text-xs font-medium truncate transition-opacity duration-200', open ? 'opacity-100' : 'opacity-0 w-0']">
-                         {{ doc }}
-                     </span>
-                 </button>
+            <div class="space-y-0.5 mt-1" v-if="isLibraryOpen || !open">
+                <a 
+                    v-for="doc in references"
+                    :key="doc.id"
+                    :href="doc.file_path"
+                    target="_blank"
+                    class="w-full flex items-center h-10 px-2 rounded-lg text-gray-500 dark:text-slate-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-500/5 hover:text-emerald-700 dark:hover:text-emerald-300 group transition-all duration-200"
+                >
+                    <div class="grid h-full w-12 place-content-center shrink-0">
+                        <FileText class="h-4 w-4 opacity-40 group-hover:opacity-100 group-hover:scale-110 transition-transform" />
+                    </div>
+                    <span :class="['text-xs font-medium truncate transition-opacity duration-200', open ? 'opacity-100' : 'opacity-0 w-0']">
+                        {{ doc.title }}
+                    </span>
+                </a>
             </div>
         </div>
 
-        <!-- Bottom Config -->
-            <div v-if="open" class="border-t border-gray-200 dark:border-white/10 pt-4 space-y-1">
-            <div class="px-3 py-2 text-xs font-medium text-gray-500 dark:text-slate-500 uppercase tracking-wide">
+        <!-- Sticky Bottom Section -->
+        <div class="shrink-0 border-t border-gray-200 dark:border-white/10 pt-4 pb-2 space-y-1 bg-white dark:bg-black">
+            <div v-if="open" class="px-3 py-1 text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">
                 Account
             </div>
-                <Link
+            <Link
                 v-for="item in [
                     { icon: Settings, title: 'Settings', href: '/dashboard/settings' },
                     { icon: HelpCircle, title: 'Help & Support', href: '/dashboard/help' },
@@ -164,25 +242,25 @@ onMounted(async () => {
                 <div class="grid h-full w-12 place-content-center shrink-0">
                     <component :is="item.icon" class="h-4 w-4" />
                 </div>
-                <span class="text-sm font-medium transition-opacity duration-200 whitespace-nowrap">
+                <span :class="['text-sm font-medium transition-opacity duration-200 whitespace-nowrap', open ? 'opacity-100' : 'opacity-0 w-0']">
                     {{ item.title }}
                 </span>
             </Link>
-        </div>
 
-        <!-- Toggle -->
-        <button
-            @click="emit('toggle')"
-            class="absolute bottom-0 left-0 right-0 border-t border-gray-200 dark:border-white/10 transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
-        >
-            <div class="flex items-center p-3 overflow-hidden">
-                <div class="grid size-10 place-content-center shrink-0">
-                    <ChevronsRight :class="['h-4 w-4 transition-transform duration-300 text-gray-500 dark:text-slate-400', open ? 'rotate-180' : '']" />
+            <!-- Toggle Button - No longer absolute -->
+            <button
+                @click="emit('toggle')"
+                class="w-full mt-2 border-t border-gray-100 dark:border-white/5 transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
+            >
+                <div class="flex items-center p-3 overflow-hidden">
+                    <div class="grid size-10 place-content-center shrink-0">
+                        <ChevronsRight :class="['h-4 w-4 transition-transform duration-300 text-gray-500 dark:text-slate-400', open ? 'rotate-180' : '']" />
+                    </div>
+                    <span :class="['text-sm font-medium text-gray-600 dark:text-slate-300 transition-opacity duration-200 whitespace-nowrap', open ? 'opacity-100' : 'opacity-0 w-0']">
+                        Hide Sidebar
+                    </span>
                 </div>
-                <span :class="['text-sm font-medium text-gray-600 dark:text-slate-300 transition-opacity duration-200 whitespace-nowrap', open ? 'opacity-100' : 'opacity-0 w-0']">
-                    Hide
-                </span>
-            </div>
-        </button>
+            </button>
+        </div>
     </nav>
 </template>

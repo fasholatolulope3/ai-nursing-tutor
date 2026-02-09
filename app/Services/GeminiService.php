@@ -10,7 +10,7 @@ class GeminiService
 {
     protected string $baseUrl;
     protected string $apiKey;
-    protected string $model = 'gemini-3-flash-preview';
+    protected string $model = 'gemini-1.5-flash';
 
     public function __construct()
     {

@@ -10,7 +10,7 @@ class ClinicalScenarioSeeder extends Seeder
     public function run(): void
     {
         // 1. Septic Shock Scenario
-        \App\Models\ClinicalScenario::create([
+        ClinicalScenario::create([
             'title' => 'Septic Shock: Early Recognition',
             'description' => 'A 65-year-old male admitted with pneumonia who is becoming increasingly hypotensive and tachycardia. Identification of early sepsis markers is critical.',
             'objective' => [

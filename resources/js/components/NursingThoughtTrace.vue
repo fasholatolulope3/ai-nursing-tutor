@@ -7,6 +7,11 @@ import {
     ChevronDown,
     ChevronUp,
 } from 'lucide-vue-next';
+import { marked } from 'marked';
+
+const renderMarkdown = (content: string) => {
+    return marked.parse(content, { breaks: true });
+};
 
 interface ThoughtStep {
     id: string;
@@ -120,7 +125,7 @@ const toggleExpand = () => {
                     <!-- Content -->
                     <div class="flex-1">
                         <p
-                            class="font-medium"
+                            class="font-medium markdown-content"
                             :class="{
                                 'text-slate-500 dark:text-slate-500':
                                     step.status === 'pending',
@@ -129,14 +134,14 @@ const toggleExpand = () => {
                                 'text-slate-700 dark:text-slate-200':
                                     step.status === 'completed',
                             }"
+                            v-html="renderMarkdown(step.description)"
                         >
-                            {{ step.description }}
                         </p>
                         <p
                             v-if="step.details"
-                            class="mt-1 text-xs text-slate-500 dark:text-slate-400"
+                            class="mt-1 text-xs text-slate-500 dark:text-slate-400 markdown-content"
+                            v-html="renderMarkdown(step.details)"
                         >
-                            {{ step.details }}
                         </p>
                     </div>
                 </div>

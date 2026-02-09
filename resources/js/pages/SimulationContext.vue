@@ -4,6 +4,7 @@ import { usePage, Head } from '@inertiajs/vue3';
 import { simulationService, type SimulationSession } from '@/services/simulation';
 import ChatInterface from '@/components/ChatInterface.vue';
 import Navbar from '@/components/Navbar.vue';
+import { Activity, Heart, Thermometer, Wind, Droplets } from 'lucide-vue-next';
 
 const props = defineProps<{
     sessionId: number;
@@ -21,56 +22,84 @@ onMounted(async () => {
         loading.value = false;
     }
 });
+
+// Note: Future improvement would be to listen for vitals updates from ChatInterface
 </script>
 
 <template>
     <Head title="Simulation" />
-    <div class="min-h-screen bg-black text-white font-sans selection:bg-emerald-500/30">
+    <div class="min-h-screen bg-slate-950 text-white font-sans selection:bg-emerald-500/30 overflow-hidden flex flex-col">
         <Navbar />
 
-        <main class="pt-24 px-6 max-w-7xl mx-auto h-[calc(100vh-6rem)] flex gap-6">
+        <main class="flex-1 pt-20 flex overflow-hidden">
             <!-- Left Panel: Patient State / Context -->
-            <div class="w-1/3 bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col gap-4">
-                <div v-if="loading" class="text-slate-400">Loading Context...</div>
+            <div class="w-80 lg:w-96 bg-black/40 border-r border-white/10 p-6 flex flex-col gap-6 overflow-y-auto">
+                <div v-if="loading" class="flex items-center gap-3 text-slate-400 animate-pulse">
+                    <Activity class="w-5 h-5 animate-spin" />
+                    <span>Initializing Context...</span>
+                </div>
+                
                 <template v-else-if="session">
+                    <!-- Scenario Info -->
                     <div>
-                        <h2 class="text-xl font-light text-emerald-400 mb-1">{{ session.scenario?.title }}</h2>
-                        <p class="text-sm text-slate-400">{{ session.scenario?.description }}</p>
+                        <div class="inline-flex items-center px-2 py-0.5 rounded bg-emerald-500/10 text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-2 border border-emerald-500/20">
+                            Active Case
+                        </div>
+                        <h2 class="text-xl font-bold text-white mb-2 leading-tight">{{ session.scenario?.title }}</h2>
+                        <p class="text-sm text-slate-400 leading-relaxed">{{ session.scenario?.description }}</p>
                     </div>
 
-                    <div class="h-px bg-white/10 my-2"></div>
+                    <div class="h-px bg-white/10"></div>
 
+                    <!-- Vitals Section -->
                     <div>
-                        <h3 class="text-sm font-medium text-slate-300 uppercase tracking-wider mb-3">Patient Vitals (Initial)</h3>
-                        <div class="grid grid-cols-2 gap-4" v-if="session.scenario?.initial_patient_state?.vitals">
-                            <div class="p-3 bg-black/40 rounded-lg border border-white/5">
-                                <div class="text-xs text-slate-500">HR</div>
-                                <div class="text-xl font-mono text-emerald-300">{{ session.scenario.initial_patient_state.vitals.HR }} <span class="text-xs text-slate-600">bpm</span></div>
-                            </div>
-                            <div class="p-3 bg-black/40 rounded-lg border border-white/5">
-                                <div class="text-xs text-slate-500">BP</div>
-                                <div class="text-xl font-mono text-emerald-300">{{ session.scenario.initial_patient_state.vitals.BP }}</div>
-                            </div>
-                            <div class="p-3 bg-black/40 rounded-lg border border-white/5">
-                                <div class="text-xs text-slate-500">SpO2</div>
-                                <div class="text-xl font-mono text-emerald-300">{{ session.scenario.initial_patient_state.vitals.SpO2 }}%</div>
-                            </div>
-                            <div class="p-3 bg-black/40 rounded-lg border border-white/5">
-                                <div class="text-xs text-slate-500">RR</div>
-                                <div class="text-xl font-mono text-emerald-300">{{ session.scenario.initial_patient_state.vitals.RR }}</div>
-                            </div>
-                             <div class="p-3 bg-black/40 rounded-lg border border-white/5 col-span-2">
-                                <div class="text-xs text-slate-500">Temp</div>
-                                <div class="text-xl font-mono text-emerald-300">{{ session.scenario.initial_patient_state.vitals.Temp }}°C</div>
+                        <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Real-time Biometrics</h3>
+                        <div class="grid grid-cols-1 gap-3">
+                            <div 
+                                v-for="(val, key) in Object.fromEntries(Object.entries(session.scenario?.initial_patient_state?.vitals || session.scenario?.initial_patient_state || {}).filter(([k]) => k !== 'profile' && k !== 'id' && k !== 'patient_profile'))" 
+                                :key="key"
+                                class="p-4 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-colors group"
+                            >
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{{ key }}</span>
+                                    <component 
+                                        :is="String(key).toLowerCase().includes('hr') || String(key).toLowerCase().includes('heart') ? Heart : 
+                                            String(key).toLowerCase().includes('temp') ? Thermometer : 
+                                            String(key).toLowerCase().includes('rr') || String(key).toLowerCase().includes('resp') ? Wind : 
+                                            String(key).toLowerCase().includes('spo2') || String(key).toLowerCase().includes('ox') ? Droplets : Activity" 
+                                        class="w-3.5 h-3.5 text-slate-600 group-hover:text-emerald-500/70 transition-colors"
+                                    />
+                                </div>
+                                <div class="text-2xl font-mono text-emerald-400 tracking-tighter">
+                                    {{ val }}
+                                    <span class="text-[10px] text-slate-600 ml-1 font-sans tracking-normal">
+                                        {{ String(key).toLowerCase().includes('hr') ? 'BPM' : 
+                                           String(key).toLowerCase().includes('temp') ? '°C' : 
+                                           String(key).toLowerCase().includes('spo2') ? '%' : '' }}
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                         <div v-else class="text-slate-500 italic">No vitals data available.</div>
+                         <div v-if="!session.scenario?.initial_patient_state" class="text-slate-500 text-xs italic bg-white/5 p-4 rounded-xl border border-white/5">
+                            No telemetry data available for this case.
+                        </div>
+                    </div>
+
+                    <!-- Objectives -->
+                    <div class="mt-auto">
+                        <div class="bg-emerald-500/5 rounded-2xl p-4 border border-emerald-500/10">
+                            <h4 class="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-2">Primary Objective</h4>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                {{ session.scenario?.objective?.[0] || 'Stabilize patient and perform initial assessment.' }}
+                            </p>
+                        </div>
                     </div>
                 </template>
             </div>
 
             <!-- Right Panel: Chat Interface -->
-            <div class="flex-1 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md overflow-hidden flex flex-col">
+            <div class="flex-1 bg-black/20 overflow-hidden flex flex-col relative">
+                <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent pointer-events-none"></div>
                 <ChatInterface 
                     v-if="session" 
                     :session-id="session.id" 

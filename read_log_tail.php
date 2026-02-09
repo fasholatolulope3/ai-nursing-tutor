@@ -1,5 +1,9 @@
 <?php
-$logFile = 'storage/logs/laravel.log';
-$content = file_get_contents($logFile);
-// Get last 2000 chars
-echo substr($content, -2000);
+$logPath = 'storage/logs/laravel.log';
+if (file_exists($logPath)) {
+    $lines = file($logPath);
+    $lastLines = array_slice($lines, -100);
+    echo implode("", $lastLines);
+} else {
+    echo "Log file not found.";
+}

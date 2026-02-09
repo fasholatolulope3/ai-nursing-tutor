@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
-import { Bell, Sun, Moon, User as UserIcon, X, Check } from 'lucide-vue-next';
+import { Bell, Sun, Moon, User as UserIcon, X, Check, Menu } from 'lucide-vue-next';
 import DashboardSidebar from '@/components/ui/DashboardSidebar.vue';
 import { useNotifications } from '@/composables/useNotifications';
 
@@ -59,24 +59,46 @@ const toggleSidebar = () => {
             @toggle="toggleSidebar"
         />
 
+        <!-- Mobile Overlay -->
+        <div 
+            v-if="sidebarOpen" 
+            class="fixed inset-0 bg-black/20 dark:bg-black/40 backdrop-blur-sm z-40 lg:hidden"
+            @click="toggleSidebar"
+        ></div>
+
         <!-- Main Content -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden transition-all duration-300">
             
             <!-- Top Header / Navigation -->
-            <header class="h-16 flex items-center justify-between px-6 bg-white dark:bg-black border-b border-gray-200 dark:border-white/10 shrink-0 z-10">
+            <header class="h-16 flex items-center justify-between px-4 sm:px-6 bg-white dark:bg-black border-b border-gray-200 dark:border-white/10 shrink-0 z-10">
                 
-                <!-- Page Title / Breadcrumbs -->
-                <div>
-                     <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400">
-                        {{ title || 'Dashboard' }}
-                    </h1>
-                    <p v-if="description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                        {{ description }}
-                    </p>
+                <div class="flex items-center gap-4">
+                    <!-- Mobile Menu Button -->
+                    <button 
+                        @click="toggleSidebar"
+                        class="p-2 -ml-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10 dark:text-gray-400 transition-colors lg:hidden"
+                    >
+                        <Menu class="w-6 h-6" />
+                    </button>
+
+                    <!-- Page Title / Breadcrumbs -->
+                    <div class="min-w-0">
+                        <h1 class="text-lg sm:text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 truncate">
+                            {{ title || 'Dashboard' }}
+                        </h1>
+                        <p v-if="description" class="hidden sm:block text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                            {{ description }}
+                        </p>
+                    </div>
                 </div>
 
                 <!-- Right Actions -->
                 <div class="flex items-center gap-3">
+
+                    <!-- Page Actions Slot -->
+                    <div v-if="$slots.actions" class="mr-2">
+                        <slot name="actions" />
+                    </div>
                     
                     <!-- Notifications -->
                     <div class="relative">

@@ -1,18 +1,26 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { Head, useForm, usePage } from '@inertiajs/vue3';
+import { Head, useForm, usePage, router } from '@inertiajs/vue3';
 import DashboardLayout from '@/layouts/DashboardLayout.vue';
-import { User, Mail, Save, Camera, Loader2 } from 'lucide-vue-next';
+import { User as UserIcon, Mail, Save, Camera, Loader2, LogOut } from 'lucide-vue-next';
 
 const page = usePage();
 const user = page.props.auth.user;
 
-const form = useForm({
+interface SettingsForm {
+    name: string;
+    email: string;
+    bio: string;
+    preferences: Record<string, any>;
+    avatar: File | null;
+}
+
+const form = useForm<SettingsForm>({
     name: user.name,
     email: user.email,
-    bio: user.bio || '',
+    bio: (user.bio as string) || '',
     preferences: user.preferences || {},
-    avatar: null as File | null,
+    avatar: null,
 });
 
 const avatarPreview = ref<string | null>(user.avatar_path ? `/storage/${user.avatar_path}` : null);
@@ -151,7 +159,7 @@ const updateProfile = async () => {
                         <div class="space-y-2">
                             <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label>
                             <div class="relative">
-                                <User class="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                                <UserIcon class="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                                 <input 
                                     v-model="form.name"
                                     type="text" 
@@ -203,6 +211,24 @@ const updateProfile = async () => {
                         </button>
                     </div>
                 </form>
+            </div>
+            
+            <!-- Danger Zone -->
+            <div class="bg-white dark:bg-white/5 border border-red-200 dark:border-red-900/50 rounded-xl p-6">
+                <h3 class="text-lg font-medium text-red-600 dark:text-red-400 mb-2">Account Actions</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                    Sign out of your account on this device.
+                </p>
+                
+                <div class="flex items-center">
+                    <button 
+                        @click="router.post('/logout')"
+                        class="flex items-center gap-2 px-6 py-2 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors font-medium"
+                    >
+                        <LogOut class="w-4 h-4" />
+                        Log Out
+                    </button>
+                </div>
             </div>
             
         </div>

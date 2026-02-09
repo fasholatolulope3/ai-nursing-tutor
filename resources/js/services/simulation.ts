@@ -23,35 +23,36 @@ export interface ConversationTurn {
     role: 'user' | 'ai';
     content: string;
     created_at: string;
+    reasoning_trace?: any[];
 }
 
 export const simulationService = {
-    async getScenarios(): Promise<Scenario[]> {
-        const response = await apiClient.get('/scenarios');
+    async getScenarios(page = 1): Promise<any> {
+        const response = await apiClient.get(`scenarios?page=${page}`);
         return response.data;
     },
 
     async getScenario(id: number): Promise<Scenario> {
-        const response = await apiClient.get(`/scenarios/${id}`);
+        const response = await apiClient.get(`scenarios/${id}`);
         return response.data;
     },
 
     async startSimulation(scenarioId: number): Promise<SimulationSession> {
-        const response = await apiClient.post('/simulations', { scenario_id: scenarioId });
+        const response = await apiClient.post('simulations/start', { scenario_id: scenarioId });
         return response.data;
     },
 
     async getSimulation(id: number): Promise<SimulationSession> {
-        const response = await apiClient.get(`/simulations/${id}`);
+        const response = await apiClient.get(`simulations/${id}`);
         return response.data;
     },
 
-    async sendChat(simulationId: number, message: string): Promise<{ user_turn: ConversationTurn; ai_turn: ConversationTurn }> {
-        const response = await apiClient.post(`/simulations/${simulationId}/chat`, { message });
+    async sendChat(simulationId: number, message: string): Promise<{ user_turn: ConversationTurn; ai_turn: ConversationTurn; reasoning_trace?: any[] }> {
+        const response = await apiClient.post(`simulations/${simulationId}/chat`, { message });
         return response.data;
     },
 
-    async generateScenario(params: { type: string; difficulty: string; role: string }): Promise<Scenario> {
+    async generateScenario(params: { type: string; difficulty: string; role: string; description?: string }): Promise<Scenario> {
         const response = await apiClient.post('/scenarios/generate', params);
         return response.data.data;
     }

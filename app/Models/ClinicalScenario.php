@@ -17,11 +17,13 @@ class ClinicalScenario extends Model
         'complexity',
         'initial_patient_state',
         'medical_history',
+        'tags',
     ];
 
     protected $casts = [
         'objective' => 'array',
         'initial_patient_state' => 'array',
         'medical_history' => 'array',
+        'tags' => 'array',
     ];
 }

@@ -1,7 +1,5 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ProfileController;
 
@@ -17,6 +15,7 @@ Route::prefix('v1')->group(function () {
 
         // Simulation routes
         Route::get('/simulations', [App\Http\Controllers\Api\V1\SimulationController::class, 'index']); // List user sessions
+        Route::post('/simulations/start', [App\Http\Controllers\Api\V1\SimulationController::class, 'start']);
         Route::post('/simulations', [App\Http\Controllers\Api\V1\SimulationController::class, 'store']);
         // Route::post('/simulations/clinical-query', [App\Http\Controllers\Api\V1\SimulationController::class, 'handleClinicalQuery']); // Moved outside for access
         Route::get('/simulations/{id}', [App\Http\Controllers\Api\V1\SimulationController::class, 'show']);
@@ -38,6 +37,14 @@ Route::prefix('v1')->group(function () {
 
     // Clinical Query (Public Access for Dashboard)
     Route::post('/simulations/clinical-query', [App\Http\Controllers\Api\V1\SimulationController::class, 'handleClinicalQuery']);
+    Route::get('/simulations/clinical-query/last', [App\Http\Controllers\Api\V1\SimulationController::class, 'getLastInteraction']);
+    Route::get('/simulations/clinical-query/{id}', [App\Http\Controllers\Api\V1\SimulationController::class, 'getInteraction']);
+
+    // Reference Library
+    Route::get('/references', [App\Http\Controllers\Api\V1\ReferenceController::class, 'index']);
+
+    // Recommendations
+    Route::post('/recommendations', [App\Http\Controllers\Api\V1\RecommendationsController::class, 'index']);
 
     // Scenario Generation (Factory)
     Route::post('/scenarios/generate', [\App\Http\Controllers\Api\V1\ScenarioController::class, 'generate']);

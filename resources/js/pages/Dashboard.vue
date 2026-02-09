@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import DashboardLayout from '@/layouts/DashboardLayout.vue';
 import ChatInterface from '@/components/dashboard/ChatInterface.vue';
 import ClinicalLabPanel from '@/components/dashboard/ClinicalLabPanel.vue';
-import { ref } from 'vue';
+import { useAdaptiveStudy } from '@/composables/useAdaptiveStudy';
+import { ref, onMounted, computed } from 'vue';
 
 // --- State Management ---
 const isThinking = ref(false);
@@ -21,8 +22,106 @@ const messages = ref<any[]>([
 const thoughtTrace = ref<any[]>([]);
 
 // --- Actions ---
-// --- Actions ---
 const previousThoughtSignature = ref<string | null>(null);
+const { setTopics, clearTopics } = useAdaptiveStudy();
+
+const restoreInteraction = (interaction: any) => {
+    const aiData = interaction.ai_response;
+    // 1. Restore User Prompt
+    messages.value.push({
+        id: 'restored-user',
+        role: 'user',
+        content: interaction.prompt,
+        timestamp: new Date(interaction.created_at), // Approx
+    });
+
+    // 2. Restore AI Response
+    messages.value.push({
+        id: 'restored-ai',
+        role: 'assistant',
+        content: aiData.answer,
+        timestamp: new Date(interaction.created_at),
+    });
+
+    // 3. Restore Context
+    if (aiData.new_signature) {
+        previousThoughtSignature.value = aiData.new_signature;
+    }
+
+    // 4. Restore Thought Trace
+    if (aiData.reasoning_trace) {
+        thoughtTrace.value = aiData.reasoning_trace.map((step: any, index: number) => ({
+            id: `restored-t-${index}`,
+            description: step.content,
+            status: step.status || 'completed',
+            details: step.details,
+        }));
+    }
+
+    // 5. Restore Extracted Data (Active Document Placeholder)
+    if (aiData.extracted_data && Object.keys(aiData.extracted_data).length > 0) {
+            const facts = Object.entries(aiData.extracted_data).map(([key, value], index) => ({
+            id: `restored-f-${index}`,
+            text: `${key.toUpperCase()}: ${value}`,
+            confidence: 0.95,
+            source: 'Restored Context'
+        }));
+
+        activeDocument.value = {
+            id: 'restored-doc',
+            name: 'Restored Clinical Context',
+            type: 'pdf', // Generic fallback
+            url: null,
+            facts: facts
+        };
+    }
+
+    // 6. Restore Topics
+    if (aiData.related_topics) {
+        setTopics(aiData.related_topics);
+    }
+};
+
+const startNewChat = () => {
+    messages.value = [
+        {
+            id: '1',
+            role: 'assistant',
+            content: 'Hello, nurse. I am ready to assist with your clinical reasoning. Please describe the patient case or upload a chart.',
+            timestamp: new Date(),
+        },
+    ];
+    thoughtTrace.value = [];
+    previousThoughtSignature.value = null;
+    activeDocument.value = null;
+    clearTopics();
+    
+    // Clear URL param without reload
+    router.get('/dashboard', {}, { preserveState: true, replace: true });
+};
+
+onMounted(async () => {
+    try {
+        const apiClient = (await import('@/lib/axios')).default;
+        
+        // Check for interaction ID in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const interactionId = urlParams.get('interaction');
+
+        let response;
+        if (interactionId) {
+            response = await apiClient.get(`/simulations/clinical-query/${interactionId}`);
+        } else {
+            response = await apiClient.get('/simulations/clinical-query/last');
+        }
+        
+        if (response.data) {
+            restoreInteraction(response.data);
+        }
+    } catch (error) {
+        console.error('Failed to restore session:', error);
+    }
+});
 
 const handleSendMessage = async (content: string, files: File[]) => {
     // 1. Add User Message
@@ -100,12 +199,25 @@ const handleSendMessage = async (content: string, files: File[]) => {
             previousThoughtSignature.value = data.new_signature;
         }
 
-    } catch (error) {
+        // Adaptive Recommendations
+        if (data.related_topics) {
+            setTopics(data.related_topics);
+        }
+
+    } catch (error: any) {
         console.error('Clinical Query Failed:', error);
+        
+        let errorMsg = "I'm having trouble connecting to the clinical reasoning engine. Please try again.";
+        if (error.response?.status === 429) {
+            errorMsg = "Usage limit reached. Please wait a moment.";
+        } else if (error.response?.data?.error) {
+            errorMsg = error.response.data.error;
+        }
+
         messages.value.push({
             id: Date.now().toString(),
             role: 'assistant',
-            content: "I'm having trouble connecting to the clinical reasoning engine. Please try again.",
+            content: errorMsg,
             timestamp: new Date(),
         });
     } finally {
@@ -127,6 +239,15 @@ const handleDocumentSelect = (doc: any) => {
         title="Clinical Workspace"
         description="Real-time Agentic Reasoning"
     >
+        <template #actions>
+            <button 
+                @click="startNewChat"
+                class="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-white/10 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors"
+            >
+                New Chat
+            </button>
+        </template>
+        
         <!-- Main Layout: 3 Panels (Sidebar handled by Layout) -->
         <div
             class="-m-6 mt-0 flex h-[calc(100vh-8rem)] border-t border-gray-200 dark:border-white/10"

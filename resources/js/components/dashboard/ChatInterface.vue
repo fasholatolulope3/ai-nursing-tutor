@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { ref, nextTick, watch } from 'vue';
 import { Send, Paperclip, Mic, Image as ImageIcon, X } from 'lucide-vue-next';
+import { marked } from 'marked';
 import NursingThoughtTrace from '@/components/NursingThoughtTrace.vue';
+
+const renderMarkdown = (content: string) => {
+    return marked.parse(content, { breaks: true });
+};
 
 interface Message {
     id: string;
@@ -148,8 +153,10 @@ watch(
                         </div>
                     </div>
 
-                    <div class="leading-relaxed whitespace-pre-wrap">
-                        {{ msg.content }}
+                    <div 
+                        class="leading-relaxed markdown-content" 
+                        v-html="renderMarkdown(msg.content)"
+                    >
                     </div>
 
                     <div class="mt-2 text-right text-[10px] opacity-70">

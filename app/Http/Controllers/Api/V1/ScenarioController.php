@@ -24,17 +24,22 @@ class ScenarioController extends Controller
      */
     public function generate(Request $request)
     {
+        ini_set('max_execution_time', 120);
+        set_time_limit(120); // Allow up to 2 minutes for AI generation
+
         $validated = $request->validate([
             'type' => 'required|string',
             'difficulty' => 'required|string|in:Beginner,Intermediate,Advanced',
             'role' => 'required|string',
+            'description' => 'nullable|string',
         ]);
 
         try {
             $scenarioData = $this->geminiService->generateScenario(
                 $validated['type'],
                 $validated['difficulty'],
-                $validated['role']
+                $validated['role'],
+                $validated['description'] ?? null
             );
 
             // Map Gemini Response to Database Model
@@ -63,6 +68,9 @@ class ScenarioController extends Controller
             if (str_contains($e->getMessage(), '429') || str_contains(strtolower($e->getMessage()), 'quota')) {
                 $errorMessage = 'AI Service Busy (Quota Exceeded). Please wait a minute and try again.';
                 $statusCode = 429;
+            } elseif (str_contains($e->getMessage(), '503') || str_contains(strtolower($e->getMessage()), 'overloaded') || str_contains(strtolower($e->getMessage()), 'unavailable')) {
+                $errorMessage = 'AI Engine Overloaded. The clinical factory is currently at capacity. Please try again in a few seconds.';
+                $statusCode = 503;
             }
 
             return response()->json([
@@ -77,7 +85,7 @@ class ScenarioController extends Controller
      */
     public function index()
     {
-        return response()->json([]);
+        return response()->json(\App\Models\ClinicalScenario::latest()->paginate(10));
     }
 
     /**

@@ -12,17 +12,17 @@ class SimulationSession extends Model
 
     protected $fillable = [
         'user_id',
-        'clinical_scenario_id',
+        'scenario_id',
         'status',
-        'start_time',
-        'end_time',
-        'final_score',
+        'score',
         'feedback_summary',
+        'started_at',
+        'completed_at',
     ];
 
     protected $casts = [
-        'start_time' => 'datetime',
-        'end_time' => 'datetime',
+        'started_at' => 'datetime',
+        'completed_at' => 'datetime',
         'feedback_summary' => 'array',
     ];
 
@@ -33,7 +33,7 @@ class SimulationSession extends Model
 
     public function scenario()
     {
-        return $this->belongsTo(ClinicalScenario::class, 'clinical_scenario_id');
+        return $this->belongsTo(ClinicalScenario::class, 'scenario_id');
     }
 
     public function turns()

@@ -1,0 +1,19 @@
+--- Inspecting nursing_db ---
+Table: [migrations               ] | Count: 11
+Table: [users                    ] | Count: 0
+Table: [password_reset_tokens    ] | Count: 0
+Table: [sessions                 ] | Count: 0
+Table: [cache                    ] | Count: 0
+Table: [cache_locks              ] | Count: 0
+Table: [jobs                     ] | Count: 0
+Table: [job_batches              ] | Count: 0
+Table: [failed_jobs              ] | Count: 0
+Table: [clinical_scenarios       ] | Count: 0
+Table: [simulation_sessions      ] | Count: 0
+Table: [conversation_turns       ] | Count: 0
+Table: [thought_signatures       ] | Count: 0
+Table: [patient_state_snapshots  ] | Count: 0
+Table: [multimodal_artifacts     ] | Count: 0
+
+--- Inspecting database/database.sqlite ---
+

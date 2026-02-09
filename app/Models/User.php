@@ -56,4 +56,12 @@ class User extends Authenticatable
             'preferences' => 'array',
         ];
     }
+
+    /**
+     * Get the user's simulation sessions.
+     */
+    public function simulationSessions()
+    {
+        return $this->hasMany(SimulationSession::class);
+    }
 }

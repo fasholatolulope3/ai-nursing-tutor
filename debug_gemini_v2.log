@@ -1,0 +1,14 @@
+Starting Gemini Connection Debug... 2026-02-09 14:29:39
+Endpoint: https://generativelanguage.googleapis.com/v1beta/models
+API Key Present: YES
+API Key First 4 chars: AIza
+Testing URL (Redacted): https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=REDACTED
+Status Code: 404
+Response Failed!
+{
+  "error": {
+    "code": 404,
+    "message": "models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+    "status": "NOT_FOUND"
+  }
+}

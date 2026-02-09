@@ -170,3 +170,65 @@
         @apply bg-background text-foreground;
     }
 }
+
+/* Premium Markdown Styling for Chat interface */
+.markdown-content {
+    @apply space-y-4;
+}
+
+.markdown-content p {
+    @apply mb-3 leading-relaxed last:mb-0;
+}
+
+.markdown-content strong {
+    @apply font-bold text-white/90;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+    @apply my-3 space-y-2;
+}
+
+.markdown-content ul {
+    @apply list-inside list-disc;
+}
+
+.markdown-content ol {
+    @apply list-inside list-decimal;
+}
+
+.markdown-content li {
+    @apply text-slate-300;
+}
+
+.markdown-content li strong {
+    @apply text-emerald-400/90;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3 {
+    @apply mt-6 mb-3 font-bold tracking-tight text-white;
+}
+
+.markdown-content h1 {
+    @apply text-xl;
+}
+.markdown-content h2 {
+    @apply text-lg;
+}
+.markdown-content h3 {
+    @apply text-base;
+}
+
+.markdown-content blockquote {
+    @apply my-4 rounded-r-xl border-l-4 border-emerald-500/50 bg-emerald-500/5 px-4 py-3 text-emerald-100/90 italic;
+}
+
+.markdown-content hr {
+    @apply my-6 border-white/10;
+}
+
+.markdown-content code {
+    @apply rounded bg-black/40 px-1.5 py-0.5 font-mono text-xs text-emerald-300;
+}
