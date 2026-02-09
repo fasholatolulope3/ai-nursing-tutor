@@ -64,4 +64,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(SimulationSession::class);
     }
+
+    /**
+     * Get the user's support tickets.
+     */
+    public function supportTickets()
+    {
+        return $this->hasMany(SupportTicket::class);
+    }
 }

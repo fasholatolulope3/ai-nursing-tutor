@@ -2,6 +2,7 @@
 import { ref, onMounted, watch } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import { Bell, Sun, Moon, User as UserIcon, X, Check, Menu } from 'lucide-vue-next';
+import { Toaster } from 'vue-sonner';
 import DashboardSidebar from '@/components/ui/DashboardSidebar.vue';
 import { useNotifications } from '@/composables/useNotifications';
 
@@ -52,7 +53,7 @@ const toggleSidebar = () => {
 
 <template>
     <div :class="['flex min-h-screen w-full font-sans bg-gray-50 dark:bg-black text-gray-900 dark:text-gray-100 transition-colors duration-300']">
-        
+        <Toaster position="top-right" rich-colors />
         <!-- Sidebar -->
         <DashboardSidebar 
             :open="sidebarOpen" 

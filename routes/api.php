@@ -30,6 +30,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/profile', [ProfileController::class, 'show']);
         Route::put('/profile', [ProfileController::class, 'update']);
         Route::post('/profile/avatar', [ProfileController::class, 'uploadAvatar']);
+
+        // Support
+        Route::post('/support/tickets', [\App\Http\Controllers\Api\V1\SupportController::class, 'store'])->name('api.v1.support.tickets');
     });
 
     // Gemini Integration
