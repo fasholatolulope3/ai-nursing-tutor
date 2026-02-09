@@ -10,7 +10,7 @@ class GeminiService
 {
     protected string $baseUrl;
     protected string $apiKey;
-    protected string $model = 'gemini-1.5-flash';
+    protected string $model = 'gemini-2.5-flash';
 
     public function __construct()
     {
@@ -99,7 +99,9 @@ Output strictly in JSON format:
         try {
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
-            ])->retry(3, 2000)->post($url, $payload);
+            ])->timeout(60)
+                ->connectTimeout(10)
+                ->retry(3, 2000)->post($url, $payload);
 
             if ($response->failed()) {
                 Log::error('Gemini API Error (Clinical Query)', [

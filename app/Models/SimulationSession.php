@@ -38,6 +38,6 @@ class SimulationSession extends Model
 
     public function turns()
     {
-        return $this->hasMany(ConversationTurn::class);
+        return $this->hasMany(ConversationTurn::class, 'simulation_session_id');
     }
 }
