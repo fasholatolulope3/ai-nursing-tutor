@@ -1,17 +1,4 @@
 {
     "version": 2,
-    "routes": [
-        {
-            "src": "/build/(.*)",
-            "dest": "/public/build/$1"
-        },
-        {
-            "src": "/(css|js)/(.*)",
-            "dest": "/public/$1/$2"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "/public/$1"
-        }
-    ]
+    "outputDirectory": "public"
 }
