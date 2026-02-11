@@ -9,11 +9,12 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     libpq-dev \
+    libicu-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install gd pdo pdo_pgsql zip bcmath
+    && docker-php-ext-install gd pdo pdo_pgsql zip bcmath intl
 
 # Configure Apache
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
@@ -23,6 +24,7 @@ RUN a2enmod rewrite
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
 # Install Node.js
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
@@ -34,10 +36,14 @@ WORKDIR /var/www/html
 # Copy application files
 COPY . .
 
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader \
-    && npm install \
-    && npm run build
+# Install PHP dependencies
+RUN composer install --no-dev --optimize-autoloader --no-scripts
+
+# Install JS dependencies and build assets
+RUN npm install && npm run build
+
+# Run composer scripts (like package:discover) after build
+RUN composer run-script post-autoload-dump
 
 # Set permissions
 RUN chown -R www-data:www-data storage bootstrap/cache
