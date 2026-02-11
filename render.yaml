@@ -1,9 +1,7 @@
 services:
     - type: web
       name: ai-nursing-tutor
-      env: php
-      buildCommand: composer install --no-dev && npm install && npm run build
-      startCommand: php artisan migrate --force && apache2-foreground
+      env: docker
       envVars:
           - key: APP_KEY
             generateValue: true
