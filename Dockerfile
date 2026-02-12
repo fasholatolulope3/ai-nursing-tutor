@@ -1,4 +1,5 @@
 FROM php:8.4-apache
+# Cache bust to force PHP 8.4 update
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
