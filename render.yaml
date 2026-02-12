@@ -11,7 +11,7 @@ services:
             value: false
           - key: DB_CONNECTION
             value: pgsql
-          - key: DATABASE_URL
+          - key: DB_URL
             fromDatabase:
                 name: nursing-db
                 property: connectionString
