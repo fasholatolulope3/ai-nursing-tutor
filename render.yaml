@@ -3,6 +3,8 @@ services:
       name: ai-nursing-tutor
       env: docker
       envVars:
+          - key: APP_NAME
+            value: 'Clinical Context'
           - key: APP_KEY # Set this in the Render Dashboard to a valid base64 key
           - key: APP_ENV
             value: production
