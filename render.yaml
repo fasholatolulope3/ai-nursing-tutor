@@ -3,12 +3,11 @@ services:
       name: ai-nursing-tutor
       env: docker
       envVars:
-          - key: APP_KEY
-            generateValue: true
+          - key: APP_KEY # Set this in the Render Dashboard to a valid base64 key
           - key: APP_ENV
             value: production
           - key: APP_DEBUG
-            value: true
+            value: false
           - key: DB_CONNECTION
             value: pgsql
           - key: DB_URL
