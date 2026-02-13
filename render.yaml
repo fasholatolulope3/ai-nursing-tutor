@@ -16,10 +16,8 @@ services:
             fromDatabase:
                 name: nursing-db
                 property: connectionString
-          - key: ASSET_URL
-            value: https://ai-nursing-tutor.vercel.app
           - key: APP_URL
-            value: https://ai-nursing-tutor.vercel.app
+            value: https://ai-nursing-tutor.onrender.com
           - key: LOG_CHANNEL
             value: errorlog
 
