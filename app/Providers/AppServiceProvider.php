@@ -25,7 +25,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
 
-        if (env('VERCEL')) {
+        if (app()->isProduction()) {
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
     }
