@@ -2,7 +2,7 @@
     <Head title="Clinical Context - AI Nursing Tutor" />
 
     <div
-        class="min-h-screen overflow-hidden bg-black font-sans selection:bg-emerald-500/30"
+        class="min-h-screen overflow-hidden bg-[#020617] font-sans selection:bg-emerald-500/30"
     >
         <!-- Background Patterns -->
         <div class="pointer-events-none fixed inset-0 z-0 opacity-20">
