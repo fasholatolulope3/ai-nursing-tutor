@@ -3,7 +3,11 @@
     "outputDirectory": "public",
     "rewrites": [
         {
-            "source": "/(api|sanctum|login|register|logout|dashboard|up|robots.txt|favicon.ico|storage/.*)",
+            "source": "/(api|sanctum|login|register|logout|dashboard|up|storage)/:path*",
+            "destination": "https://ai-nursing-tutor.onrender.com/$1/:path*"
+        },
+        {
+            "source": "/(robots.txt|favicon.ico)",
             "destination": "https://ai-nursing-tutor.onrender.com/$1"
         },
         {

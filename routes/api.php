@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ProfileController;
+use Illuminate\Http\Request;
 
 Route::prefix('v1')->group(function () {
     Route::get('/user', function (Request $request) {
