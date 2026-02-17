@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { FileText, Eye, CheckCircle, AlertCircle } from 'lucide-vue-next';
+import { FileText, Eye, CheckCircle, AlertCircle, X } from 'lucide-vue-next';
 
 interface GroundedFact {
     id: string;
@@ -20,6 +20,11 @@ interface ActiveDocument {
 const props = defineProps<{
     document?: ActiveDocument | null;
     isLoading?: boolean;
+    isOpen?: boolean;
+}>();
+
+const emit = defineEmits<{
+    (e: 'close'): void;
 }>();
 
 const activeTab = ref<'preview' | 'facts'>('preview');
@@ -27,24 +32,36 @@ const activeTab = ref<'preview' | 'facts'>('preview');
 
 <template>
     <div
-        class="flex h-full w-80 shrink-0 flex-col border-l border-gray-200 bg-white transition-all duration-300 lg:w-96 dark:border-white/10 dark:bg-black"
+        :class="[
+            'fixed inset-y-0 right-0 z-40 flex h-full w-full flex-col border-l border-gray-200 bg-white transition-all duration-300 sm:w-80 lg:sticky lg:top-0 lg:z-0 lg:w-96 dark:border-white/10 dark:bg-black',
+            isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0',
+        ]"
     >
         <!-- Header -->
         <div
             class="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-white/10"
         >
-            <h3
-                class="flex items-center gap-2 font-semibold text-gray-900 dark:text-gray-100"
-            >
+            <div class="flex items-center gap-2">
                 <FileText class="h-4 w-4 text-emerald-500" />
-                Clinical Lab
-            </h3>
-            <span
-                v-if="document"
-                class="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-white/5 dark:text-gray-400"
-            >
-                {{ document.type === 'pdf' ? 'PDF' : 'IMG' }}
-            </span>
+                <h3 class="font-semibold text-gray-900 dark:text-gray-100">
+                    Clinical Lab
+                </h3>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <span
+                    v-if="document"
+                    class="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-white/5 dark:text-gray-400"
+                >
+                    {{ document.type === 'pdf' ? 'PDF' : 'IMG' }}
+                </span>
+                <button
+                    @click="emit('close')"
+                    class="rounded-md p-1 text-gray-400 hover:text-gray-600 lg:hidden dark:hover:text-gray-200"
+                >
+                    <X class="h-5 w-5" />
+                </button>
+            </div>
         </div>
 
         <!-- Empty State -->

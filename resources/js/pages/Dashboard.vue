@@ -5,9 +5,11 @@ import ChatInterface from '@/components/dashboard/ChatInterface.vue';
 import ClinicalLabPanel from '@/components/dashboard/ClinicalLabPanel.vue';
 import { useAdaptiveStudy } from '@/composables/useAdaptiveStudy';
 import { ref, onMounted, computed } from 'vue';
+import { FileSearch } from 'lucide-vue-next';
 
 // --- State Management ---
 const isThinking = ref(false);
+const isLabOpen = ref(false);
 const activeDocument = ref<any>(null); // Type: ActiveDocument
 const messages = ref<any[]>([
     {
@@ -50,29 +52,36 @@ const restoreInteraction = (interaction: any) => {
 
     // 4. Restore Thought Trace
     if (aiData.reasoning_trace) {
-        thoughtTrace.value = aiData.reasoning_trace.map((step: any, index: number) => ({
-            id: `restored-t-${index}`,
-            description: step.content,
-            status: step.status || 'completed',
-            details: step.details,
-        }));
+        thoughtTrace.value = aiData.reasoning_trace.map(
+            (step: any, index: number) => ({
+                id: `restored-t-${index}`,
+                description: step.content,
+                status: step.status || 'completed',
+                details: step.details,
+            }),
+        );
     }
 
     // 5. Restore Extracted Data (Active Document Placeholder)
-    if (aiData.extracted_data && Object.keys(aiData.extracted_data).length > 0) {
-            const facts = Object.entries(aiData.extracted_data).map(([key, value], index) => ({
-            id: `restored-f-${index}`,
-            text: `${key.toUpperCase()}: ${value}`,
-            confidence: 0.95,
-            source: 'Restored Context'
-        }));
+    if (
+        aiData.extracted_data &&
+        Object.keys(aiData.extracted_data).length > 0
+    ) {
+        const facts = Object.entries(aiData.extracted_data).map(
+            ([key, value], index) => ({
+                id: `restored-f-${index}`,
+                text: `${key.toUpperCase()}: ${value}`,
+                confidence: 0.95,
+                source: 'Restored Context',
+            }),
+        );
 
         activeDocument.value = {
             id: 'restored-doc',
             name: 'Restored Clinical Context',
             type: 'pdf', // Generic fallback
             url: null,
-            facts: facts
+            facts: facts,
         };
     }
 
@@ -87,7 +96,8 @@ const startNewChat = () => {
         {
             id: '1',
             role: 'assistant',
-            content: 'Hello, nurse. I am ready to assist with your clinical reasoning. Please describe the patient case or upload a chart.',
+            content:
+                'Hello, nurse. I am ready to assist with your clinical reasoning. Please describe the patient case or upload a chart.',
             timestamp: new Date(),
         },
     ];
@@ -95,7 +105,7 @@ const startNewChat = () => {
     previousThoughtSignature.value = null;
     activeDocument.value = null;
     clearTopics();
-    
+
     // Clear URL param without reload
     router.get('/dashboard', {}, { preserveState: true, replace: true });
 };
@@ -103,18 +113,20 @@ const startNewChat = () => {
 onMounted(async () => {
     try {
         const apiClient = (await import('@/lib/axios')).default;
-        
+
         // Check for interaction ID in URL
         const urlParams = new URLSearchParams(window.location.search);
         const interactionId = urlParams.get('interaction');
 
         let response;
         if (interactionId) {
-            response = await apiClient.get(`/simulations/clinical-query/${interactionId}`);
+            response = await apiClient.get(
+                `/simulations/clinical-query/${interactionId}`,
+            );
         } else {
             response = await apiClient.get('/simulations/clinical-query/last');
         }
-        
+
         if (response.data) {
             restoreInteraction(response.data);
         }
@@ -136,7 +148,7 @@ const handleSendMessage = async (content: string, files: File[]) => {
 
     // 2. Set Thinking State
     isThinking.value = true;
-    thoughtTrace.value = []; 
+    thoughtTrace.value = [];
 
     try {
         // 3. Prepare API Request
@@ -146,14 +158,21 @@ const handleSendMessage = async (content: string, files: File[]) => {
             formData.append('attachment', files[0]); // Handle first file for now
         }
         if (previousThoughtSignature.value) {
-            formData.append('previous_thought_signature', previousThoughtSignature.value);
+            formData.append(
+                'previous_thought_signature',
+                previousThoughtSignature.value,
+            );
         }
 
         // 4. Call Backend API
         const apiClient = (await import('@/lib/axios')).default;
-        const response = await apiClient.post('/simulations/clinical-query', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        const response = await apiClient.post(
+            '/simulations/clinical-query',
+            formData,
+            {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            },
+        );
 
         const data = response.data;
 
@@ -167,30 +186,40 @@ const handleSendMessage = async (content: string, files: File[]) => {
 
         // Update Thought Trace
         if (data.reasoning_trace) {
-            thoughtTrace.value = data.reasoning_trace.map((step: any, index: number) => ({
-                id: `t-${index}`,
-                description: step.content,
-                status: step.status || 'completed',
-                details: step.details,
-            }));
+            thoughtTrace.value = data.reasoning_trace.map(
+                (step: any, index: number) => ({
+                    id: `t-${index}`,
+                    description: step.content,
+                    status: step.status || 'completed',
+                    details: step.details,
+                }),
+            );
         }
 
         // Update Clinical Lab (Simple Mapping)
-        if (data.extracted_data && Object.keys(data.extracted_data).length > 0) {
+        if (
+            data.extracted_data &&
+            Object.keys(data.extracted_data).length > 0
+        ) {
             // Check if it's vitals or generic data
-            const facts = Object.entries(data.extracted_data).map(([key, value], index) => ({
-                id: `f-${index}`,
-                text: `${key.toUpperCase()}: ${value}`,
-                confidence: 0.95,
-                source: 'AI Extraction'
-            }));
+            const facts = Object.entries(data.extracted_data).map(
+                ([key, value], index) => ({
+                    id: `f-${index}`,
+                    text: `${key.toUpperCase()}: ${value}`,
+                    confidence: 0.95,
+                    source: 'AI Extraction',
+                }),
+            );
 
             activeDocument.value = {
                 id: 'doc-' + Date.now(),
                 name: files.length > 0 ? files[0].name : 'Clinical Analysis',
-                type: files.length > 0 && files[0].type.includes('image') ? 'image' : 'pdf',
+                type:
+                    files.length > 0 && files[0].type.includes('image')
+                        ? 'image'
+                        : 'pdf',
                 url: files.length > 0 ? URL.createObjectURL(files[0]) : null, // Temp URL for preview
-                facts: facts
+                facts: facts,
             };
         }
 
@@ -203,13 +232,13 @@ const handleSendMessage = async (content: string, files: File[]) => {
         if (data.related_topics) {
             setTopics(data.related_topics);
         }
-
     } catch (error: any) {
         console.error('Clinical Query Failed:', error);
-        
-        let errorMsg = "I'm having trouble connecting to the clinical reasoning engine. Please try again.";
+
+        let errorMsg =
+            "I'm having trouble connecting to the clinical reasoning engine. Please try again.";
         if (error.response?.status === 429) {
-            errorMsg = "Usage limit reached. Please wait a moment.";
+            errorMsg = 'Usage limit reached. Please wait a moment.';
         } else if (error.response?.data?.error) {
             errorMsg = error.response.data.error;
         }
@@ -240,14 +269,23 @@ const handleDocumentSelect = (doc: any) => {
         description="Real-time Agentic Reasoning"
     >
         <template #actions>
-            <button 
-                @click="startNewChat"
-                class="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-white/10 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors"
-            >
-                New Chat
-            </button>
+            <div class="flex items-center gap-2">
+                <button
+                    @click="isLabOpen = !isLabOpen"
+                    class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:outline-none lg:hidden dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:bg-white/10"
+                >
+                    <FileSearch class="mr-2 h-4 w-4" />
+                    Open Lab
+                </button>
+                <button
+                    @click="startNewChat"
+                    class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:bg-white/10"
+                >
+                    New Chat
+                </button>
+            </div>
         </template>
-        
+
         <!-- Main Layout: 3 Panels (Sidebar handled by Layout) -->
         <div
             class="-m-6 mt-0 flex h-[calc(100vh-8rem)] border-t border-gray-200 dark:border-white/10"
@@ -263,7 +301,12 @@ const handleDocumentSelect = (doc: any) => {
             </div>
 
             <!-- Right Panel: Clinical Lab -->
-            <ClinicalLabPanel :document="activeDocument" :is-loading="false" />
+            <ClinicalLabPanel
+                :document="activeDocument"
+                :is-loading="false"
+                :is-open="isLabOpen"
+                @close="isLabOpen = false"
+            />
         </div>
     </DashboardLayout>
 </template>

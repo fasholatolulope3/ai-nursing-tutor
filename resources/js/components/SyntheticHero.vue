@@ -9,28 +9,29 @@ import { cn } from '@/lib/utils';
 
 // --- Props ---
 interface HeroProps {
-  title?: string;
-  description?: string;
-  badgeText?: string;
-  badgeLabel?: string;
-  ctaButtons?: Array<{ text: string; href?: string; primary?: boolean }>;
-  microDetails?: Array<string>;
+    title?: string;
+    description?: string;
+    badgeText?: string;
+    badgeLabel?: string;
+    ctaButtons?: Array<{ text: string; href?: string; primary?: boolean }>;
+    microDetails?: Array<string>;
 }
 
 const props = withDefaults(defineProps<HeroProps>(), {
-  title: "An experiment in light, motion, and the quiet chaos between.",
-  description: "Experience a new dimension of interaction — fluid, tactile, and alive. Designed for creators who see beauty in motion.",
-  badgeText: "Gemini 3",
-  badgeLabel: "Powered By",
-  ctaButtons: () => [
-    { text: "Start Learning (Free)", href: "#", primary: true },
-    { text: "Watch Demo", href: "#" },
-  ],
-  microDetails: () => [
-    "Deep Reasoning",
-    "Multimodal Vision",
-    "1M Token Support",
-  ],
+    title: 'An experiment in light, motion, and the quiet chaos between.',
+    description:
+        'Experience a new dimension of interaction — fluid, tactile, and alive. Designed for creators who see beauty in motion.',
+    badgeText: 'Gemini 3',
+    badgeLabel: 'Powered By',
+    ctaButtons: () => [
+        { text: 'Start Learning (Free)', href: '#', primary: true },
+        { text: 'Watch Demo', href: '#' },
+    ],
+    microDetails: () => [
+        'Deep Reasoning',
+        'Multimodal Vision',
+        '1M Token Support',
+    ],
 });
 
 // --- Refs for UI Elements ---
@@ -136,209 +137,238 @@ const fragmentShader = `
 
 // --- Lifecycle ---
 onMounted(() => {
-  initThree();
-  initGSAP();
-  window.addEventListener('resize', handleResize);
+    initThree();
+    initGSAP();
+    window.addEventListener('resize', handleResize);
 });
 
 onBeforeUnmount(() => {
-  if (animationFrameId) cancelAnimationFrame(animationFrameId);
-  if (renderer) {
-    renderer.dispose();
-    renderer.domElement.remove();
-  }
-  window.removeEventListener('resize', handleResize);
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    if (renderer) {
+        renderer.dispose();
+        renderer.domElement.remove();
+    }
+    window.removeEventListener('resize', handleResize);
 });
 
 // --- Methods ---
 const initThree = () => {
-  if (!canvasContainerRef.value) return;
+    if (!canvasContainerRef.value) return;
 
-  const width = canvasContainerRef.value.clientWidth;
-  const height = canvasContainerRef.value.clientHeight;
+    const width = canvasContainerRef.value.clientWidth;
+    const height = canvasContainerRef.value.clientHeight;
 
-  // Scene
-  scene = new THREE.Scene();
+    // Scene
+    scene = new THREE.Scene();
 
-  // Camera - doesn't matter much for full screen quad, but needed for render
-  camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    // Camera - doesn't matter much for full screen quad, but needed for render
+    camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
-  // Geometry - Full screen quad
-  const geometry = new THREE.PlaneGeometry(2, 2);
+    // Geometry - Full screen quad
+    const geometry = new THREE.PlaneGeometry(2, 2);
 
-  // Material
-  material = new THREE.ShaderMaterial({
-    vertexShader,
-    fragmentShader,
-    uniforms: {
-      u_time: { value: 0 },
-      u_resolution: { value: new THREE.Vector3(width, height, 1) },
-    },
-    depthTest: false,
-    depthWrite: false,
-  });
+    // Material
+    material = new THREE.ShaderMaterial({
+        vertexShader,
+        fragmentShader,
+        uniforms: {
+            u_time: { value: 0 },
+            u_resolution: { value: new THREE.Vector3(width, height, 1) },
+        },
+        depthTest: false,
+        depthWrite: false,
+    });
 
-  const mesh = new THREE.Mesh(geometry, material);
-  scene.add(mesh);
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
 
-  // Renderer
-  renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-  renderer.setSize(width, height);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  canvasContainerRef.value.appendChild(renderer.domElement);
+    // Renderer
+    renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    canvasContainerRef.value.appendChild(renderer.domElement);
 
-  animate();
+    animate();
 };
 
 const animate = () => {
-  if (!renderer || !scene || !camera || !material) return;
+    if (!renderer || !scene || !camera || !material) return;
 
-  material.uniforms.u_time.value = clock.getElapsedTime() * 0.5;
-  
-  renderer.render(scene, camera);
-  animationFrameId = requestAnimationFrame(animate);
+    material.uniforms.u_time.value = clock.getElapsedTime() * 0.5;
+
+    renderer.render(scene, camera);
+    animationFrameId = requestAnimationFrame(animate);
 };
 
 const handleResize = () => {
-  if (!canvasContainerRef.value || !renderer || !material) return;
+    if (!canvasContainerRef.value || !renderer || !material) return;
 
-  const width = canvasContainerRef.value.clientWidth;
-  const height = canvasContainerRef.value.clientHeight;
+    const width = canvasContainerRef.value.clientWidth;
+    const height = canvasContainerRef.value.clientHeight;
 
-  renderer.setSize(width, height);
-  material.uniforms.u_resolution.value.set(width, height, 1);
+    renderer.setSize(width, height);
+    material.uniforms.u_resolution.value.set(width, height, 1);
 };
 
 const initGSAP = () => {
-  // Ensure DOM is ready
-  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+    // Ensure DOM is ready
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
 
-  // 1. Badge Reveal
-  if (badgeWrapperRef.value) {
-    // Set initial
-    gsap.set(badgeWrapperRef.value, { autoAlpha: 0, y: -8 });
-    // Animate
-    tl.to(badgeWrapperRef.value, { autoAlpha: 1, y: 0, duration: 0.5 }, 0);
-  }
-
-  // 2. Heading Reveal (Staggered words/lines simulation without SplitText plugin)
-  // We'll just fade up the whole heading or use a simple split if implemented manually.
-  // For simplicity and avoiding paid plugins, we'll fade up the heading container slightly slower.
-  if (headingRef.value) {
-       gsap.set(headingRef.value, { autoAlpha: 0, y: 24, filter: 'blur(16px)', scale: 1.04 });
-       tl.to(headingRef.value, { 
-           autoAlpha: 1, 
-           y: 0, 
-           filter: 'blur(0px)', 
-           scale: 1, 
-           duration: 0.9 
-       }, 0.1);
-  }
-
-  // 3. Paragraph
-  if (paragraphRef.value) {
-    gsap.set(paragraphRef.value, { autoAlpha: 0, y: 8 });
-    tl.to(paragraphRef.value, { autoAlpha: 1, y: 0, duration: 0.5 }, '-=0.55');
-  }
-
-  // 4. Buttons
-  if (ctaRef.value) {
-    gsap.set(ctaRef.value, { autoAlpha: 0, y: 8 });
-    tl.to(ctaRef.value, { autoAlpha: 1, y: 0, duration: 0.5 }, '-=0.35');
-  }
-
-  // 5. Micro Details
-  if (microRef.value) {
-    // Select list items if possible, or just animate the container 
-    // In Vue, ref points to the UL. We can querySelector children.
-    const items = microRef.value.querySelectorAll('li');
-    if (items.length) {
-        gsap.set(items, { autoAlpha: 0, y: 6 });
-        tl.to(items, { autoAlpha: 1, y: 0, duration: 0.5, stagger: 0.1 }, '-=0.25');
+    // 1. Badge Reveal
+    if (badgeWrapperRef.value) {
+        // Set initial
+        gsap.set(badgeWrapperRef.value, { autoAlpha: 0, y: -8 });
+        // Animate
+        tl.to(badgeWrapperRef.value, { autoAlpha: 1, y: 0, duration: 0.5 }, 0);
     }
-  }
+
+    // 2. Heading Reveal (Staggered words/lines simulation without SplitText plugin)
+    // We'll just fade up the whole heading or use a simple split if implemented manually.
+    // For simplicity and avoiding paid plugins, we'll fade up the heading container slightly slower.
+    if (headingRef.value) {
+        gsap.set(headingRef.value, {
+            autoAlpha: 0,
+            y: 24,
+            filter: 'blur(16px)',
+            scale: 1.04,
+        });
+        tl.to(
+            headingRef.value,
+            {
+                autoAlpha: 1,
+                y: 0,
+                filter: 'blur(0px)',
+                scale: 1,
+                duration: 0.9,
+            },
+            0.1,
+        );
+    }
+
+    // 3. Paragraph
+    if (paragraphRef.value) {
+        gsap.set(paragraphRef.value, { autoAlpha: 0, y: 8 });
+        tl.to(
+            paragraphRef.value,
+            { autoAlpha: 1, y: 0, duration: 0.5 },
+            '-=0.55',
+        );
+    }
+
+    // 4. Buttons
+    if (ctaRef.value) {
+        gsap.set(ctaRef.value, { autoAlpha: 0, y: 8 });
+        tl.to(ctaRef.value, { autoAlpha: 1, y: 0, duration: 0.5 }, '-=0.35');
+    }
+
+    // 5. Micro Details
+    if (microRef.value) {
+        // Select list items if possible, or just animate the container
+        // In Vue, ref points to the UL. We can querySelector children.
+        const items = microRef.value.querySelectorAll('li');
+        if (items.length) {
+            gsap.set(items, { autoAlpha: 0, y: 6 });
+            tl.to(
+                items,
+                { autoAlpha: 1, y: 0, duration: 0.5, stagger: 0.1 },
+                '-=0.25',
+            );
+        }
+    }
 };
 </script>
 
 <template>
-  <section
-    ref={sectionRef}
-    class="relative flex items-center justify-center min-h-[90vh] overflow-hidden bg-black"
-  >
-    <!-- Canvas Background -->
-    <div ref="canvasContainerRef" class="absolute inset-0 z-0"></div>
+    <section
+        ref="sectionRef"
+        class="relative flex min-h-[90vh] items-center justify-center overflow-hidden bg-black"
+    >
+        <!-- Canvas Background -->
+        <div ref="canvasContainerRef" class="absolute inset-0 z-0"></div>
 
-    <!-- Content -->
-    <div class="relative z-10 flex flex-col items-center text-center px-6 max-w-7xl mx-auto">
-      
-      <!-- Badge -->
-      <div ref="badgeWrapperRef" class="mb-6">
-        <Badge 
-          class="bg-white/10 hover:bg-white/15 text-emerald-300 backdrop-blur-md border border-white/20 uppercase tracking-wider font-medium flex items-center gap-2 px-4 py-1.5"
+        <!-- Content -->
+        <div
+            class="relative z-10 mx-auto flex max-w-7xl flex-col items-center px-6 text-center"
         >
-          <span class="text-[10px] font-light tracking-[0.18em] text-emerald-100/80">
-            {{ badgeLabel }}
-          </span>
-          <span class="h-1 w-1 rounded-full bg-emerald-200/60" />
-          <span class="text-xs font-light tracking-tight text-emerald-200">
-            {{ badgeText }}
-          </span>
-        </Badge>
-      </div>
+            <!-- Badge -->
+            <div ref="badgeWrapperRef" class="mb-6">
+                <Badge
+                    class="flex items-center gap-2 border border-white/20 bg-white/10 px-4 py-1.5 font-medium tracking-wider text-emerald-300 uppercase backdrop-blur-md hover:bg-white/15"
+                >
+                    <span
+                        class="text-[10px] font-light tracking-[0.18em] text-emerald-100/80"
+                    >
+                        {{ badgeLabel }}
+                    </span>
+                    <span class="h-1 w-1 rounded-full bg-emerald-200/60" />
+                    <span
+                        class="text-xs font-light tracking-tight text-emerald-200"
+                    >
+                        {{ badgeText }}
+                    </span>
+                </Badge>
+            </div>
 
-      <!-- Heading -->
-      <h1
-        ref="headingRef"
-        class="text-5xl md:text-7xl max-w-4xl font-light tracking-tight text-white mb-6 leading-tight"
-        style="will-change: transform, opacity, filter;"
-      >
-        {{ title }}
-      </h1>
+            <!-- Heading -->
+            <h1
+                ref="headingRef"
+                class="mb-6 max-w-4xl text-5xl leading-tight font-light tracking-tight text-white md:text-7xl"
+                style="will-change: transform, opacity, filter"
+            >
+                {{ title }}
+            </h1>
 
-      <!-- Description -->
-      <p
-        ref="paragraphRef"
-        class="text-emerald-50/80 text-lg max-w-2xl mx-auto mb-10 font-light"
-      >
-        {{ description }}
-      </p>
+            <!-- Description -->
+            <p
+                ref="paragraphRef"
+                class="mx-auto mb-10 max-w-2xl text-lg font-light text-emerald-50/80"
+            >
+                {{ description }}
+            </p>
 
-      <!-- CTA Buttons -->
-      <div
-        ref="ctaRef"
-        class="flex flex-wrap items-center justify-center gap-4"
-      >
-        <Button
-          v-for="(btn, idx) in ctaButtons"
-          :key="idx"
-          :as="btn.href && !btn.href.startsWith('#') ? Link : 'a'"
-          :href="btn.href"
-          :variant="btn.primary ? 'default' : 'outline'"
-          :class="cn(
-            'px-8 py-6 rounded-xl text-base font-medium transition-all duration-300',
-            btn.primary 
-              ? 'backdrop-blur-lg bg-emerald-500/80 hover:bg-emerald-400/80 shadow-[0_0_20px_rgba(16,185,129,0.3)] text-white border-transparent' 
-              : 'border-white/30 text-white hover:bg-white/10 backdrop-blur-lg'
-          )"
-        >
-           {{ btn.text }}
-        </Button>
-      </div>
+            <!-- CTA Buttons -->
+            <div
+                ref="ctaRef"
+                class="flex flex-wrap items-center justify-center gap-4"
+            >
+                <Button
+                    v-for="(btn, idx) in ctaButtons"
+                    :key="idx"
+                    :as="btn.href && !btn.href.startsWith('#') ? Link : 'a'"
+                    :href="btn.href"
+                    :variant="btn.primary ? 'default' : 'outline'"
+                    :class="
+                        cn(
+                            'rounded-xl px-8 py-6 text-base font-medium transition-all duration-300',
+                            btn.primary
+                                ? 'border-transparent bg-emerald-500/80 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)] backdrop-blur-lg hover:bg-emerald-400/80'
+                                : 'border-white/30 text-white backdrop-blur-lg hover:bg-white/10',
+                        )
+                    "
+                >
+                    {{ btn.text }}
+                </Button>
+            </div>
 
-      <!-- Micro Details -->
-      <ul
-        ref="microRef"
-        v-if="microDetails && microDetails.length > 0"
-        class="mt-12 flex flex-wrap justify-center gap-8 text-xs font-light tracking-wide text-emerald-100/70"
-      >
-        <li v-for="(detail, index) in microDetails" :key="index" class="flex items-center gap-2">
-          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 box-shadow-glow" />
-          {{ detail }}
-        </li>
-      </ul>
-
-    </div>
-  </section>
+            <!-- Micro Details -->
+            <ul
+                ref="microRef"
+                v-if="microDetails && microDetails.length > 0"
+                class="mt-12 flex flex-wrap justify-center gap-8 text-xs font-light tracking-wide text-emerald-100/70"
+            >
+                <li
+                    v-for="(detail, index) in microDetails"
+                    :key="index"
+                    class="flex items-center gap-2"
+                >
+                    <span
+                        class="box-shadow-glow h-1.5 w-1.5 rounded-full bg-emerald-400"
+                    />
+                    {{ detail }}
+                </li>
+            </ul>
+        </div>
+    </section>
 </template>
 
 <style scoped>
