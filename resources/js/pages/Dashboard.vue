@@ -269,19 +269,20 @@ const handleDocumentSelect = (doc: any) => {
         description="Real-time Agentic Reasoning"
     >
         <template #actions>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-3">
                 <button
                     @click="isLabOpen = !isLabOpen"
-                    class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:outline-none xl:hidden dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:bg-white/10"
+                    class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:ring-2 focus:ring-emerald-500 xl:hidden dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:bg-white/10"
                 >
-                    <FileSearch class="mr-2 h-4 w-4" />
-                    Open Lab
+                    <FileSearch class="h-4 w-4 text-emerald-500" />
+                    <span>Clinical Lab</span>
                 </button>
                 <button
                     @click="startNewChat"
-                    class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:bg-white/10"
+                    class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-500 hover:shadow-md focus:ring-2 focus:ring-emerald-500 active:scale-95"
                 >
-                    New Chat
+                    <Send class="h-4 w-4" />
+                    <span>New Chat</span>
                 </button>
             </div>
         </template>

@@ -153,11 +153,10 @@ watch(
                         </div>
                     </div>
 
-                    <div 
-                        class="leading-relaxed markdown-content" 
+                    <div
+                        class="markdown-content leading-relaxed"
                         v-html="renderMarkdown(msg.content)"
-                    >
-                    </div>
+                    ></div>
 
                     <div class="mt-2 text-right text-[10px] opacity-70">
                         {{
@@ -218,7 +217,7 @@ watch(
             </div>
 
             <div
-                class="relative flex items-end gap-2 rounded-xl border border-gray-200 bg-gray-50 p-2 transition-all focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/50 dark:border-white/10 dark:bg-white/5"
+                class="relative flex items-end gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-3 transition-all focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-500/10 dark:border-white/10 dark:bg-white/5"
             >
                 <!-- File Upload -->
                 <button
@@ -246,8 +245,8 @@ watch(
                 <!-- Text Input -->
                 <textarea
                     v-model="inputContent"
-                    rows="1"
-                    class="max-h-32 flex-1 resize-none border-none bg-transparent px-2 py-2.5 text-sm leading-relaxed text-gray-900 placeholder:text-gray-400 focus:ring-0 dark:text-white"
+                    rows="2"
+                    class="max-h-48 flex-1 resize-none border-none bg-transparent px-3 py-2 text-base leading-relaxed text-gray-900 placeholder:text-gray-400 focus:ring-0 dark:text-white"
                     placeholder="Describe symptoms, vital signs, or ask about the patient..."
                     @keydown.enter.prevent="sendMessage"
                 ></textarea>
