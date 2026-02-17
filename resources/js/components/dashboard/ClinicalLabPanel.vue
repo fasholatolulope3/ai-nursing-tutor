@@ -31,10 +31,17 @@ const activeTab = ref<'preview' | 'facts'>('preview');
 </script>
 
 <template>
+    <!-- Overlay for mobile/tablet -->
+    <div
+        v-if="isOpen"
+        class="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm xl:hidden"
+        @click="emit('close')"
+    ></div>
+
     <div
         :class="[
-            'fixed inset-y-0 right-0 z-40 flex h-full w-full flex-col border-l border-gray-200 bg-white transition-all duration-300 sm:w-80 lg:sticky lg:top-0 lg:z-0 lg:w-96 dark:border-white/10 dark:bg-black',
-            isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0',
+            'fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col border-l border-gray-200 bg-white transition-all duration-300 sm:w-80 xl:sticky xl:top-0 xl:z-0 xl:w-96 dark:border-white/10 dark:bg-black',
+            isOpen ? 'translate-x-0' : 'translate-x-full xl:translate-x-0',
         ]"
     >
         <!-- Header -->

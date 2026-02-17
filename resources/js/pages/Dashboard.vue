@@ -272,7 +272,7 @@ const handleDocumentSelect = (doc: any) => {
             <div class="flex items-center gap-2">
                 <button
                     @click="isLabOpen = !isLabOpen"
-                    class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:outline-none lg:hidden dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:bg-white/10"
+                    class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:outline-none xl:hidden dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:bg-white/10"
                 >
                     <FileSearch class="mr-2 h-4 w-4" />
                     Open Lab
@@ -288,7 +288,7 @@ const handleDocumentSelect = (doc: any) => {
 
         <!-- Main Layout: 3 Panels (Sidebar handled by Layout) -->
         <div
-            class="-m-6 mt-0 flex h-[calc(100vh-8rem)] border-t border-gray-200 dark:border-white/10"
+            class="-m-4 mt-0 flex h-[calc(100vh-8rem)] border-t border-gray-200 sm:-m-6 dark:border-white/10"
         >
             <!-- Center Stage: Chat & Reasoning -->
             <div class="relative min-w-0 flex-1 bg-white dark:bg-black">
