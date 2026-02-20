@@ -27,6 +27,10 @@ services:
             value: ai-nursing-tutor.onrender.com,ai-nursing-tutor.vercel.app
           - key: SESSION_DOMAIN
             value: ai-nursing-tutor.onrender.com
+          - key: SESSION_DRIVER
+            value: database
+          - key: SESSION_SECURE_COOKIE
+            value: true
           - key: GEMINI_API_KEY
             sync: false
           - key: LOG_CHANNEL
