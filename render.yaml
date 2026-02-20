@@ -23,6 +23,12 @@ services:
                 property: connectionString
           - key: APP_URL
             value: https://ai-nursing-tutor.onrender.com
+          - key: SANCTUM_STATEFUL_DOMAINS
+            value: ai-nursing-tutor.onrender.com,ai-nursing-tutor.vercel.app
+          - key: SESSION_DOMAIN
+            value: ai-nursing-tutor.onrender.com
+          - key: GEMINI_API_KEY
+            sync: false
           - key: LOG_CHANNEL
             value: errorlog
 

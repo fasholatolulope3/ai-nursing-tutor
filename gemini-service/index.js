@@ -17,12 +17,13 @@ try {
     console.error('Error loading .env:', e.message);
 }
 
-const API_KEY = env['GEMINI_API_KEY'];
+const API_KEY = process.env['GEMINI_API_KEY'] || env['GEMINI_API_KEY'];
 const PORT = 3001;
 
 if (!API_KEY) {
-    console.error('CRITICAL: GEMINI_API_KEY not found in .env');
-    process.exit(1);
+    console.error('CRITICAL: GEMINI_API_KEY not found in process.env or .env');
+    // Don't exit immediately on local dev if we might be using process.env
+    if (process.env.NODE_ENV === 'production') process.exit(1);
 }
 
 const server = http.createServer(async (req, res) => {

@@ -5,7 +5,7 @@ import ChatInterface from '@/components/dashboard/ChatInterface.vue';
 import ClinicalLabPanel from '@/components/dashboard/ClinicalLabPanel.vue';
 import { useAdaptiveStudy } from '@/composables/useAdaptiveStudy';
 import { ref, onMounted, computed } from 'vue';
-import { FileSearch } from 'lucide-vue-next';
+import { FileSearch, Send } from 'lucide-vue-next';
 
 // --- State Management ---
 const isThinking = ref(false);

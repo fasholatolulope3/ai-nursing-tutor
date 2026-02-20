@@ -54,4 +54,4 @@ RUN chown -R www-data:www-data storage bootstrap/cache
 EXPOSE 80
 
 # Command to run on container start
-CMD ["sh", "-c", "node gemini-service/index.js & php artisan migrate --force && apache2-foreground"]
+CMD ["sh", "-c", "node gemini-service/index.js & php artisan migrate --force --seed && apache2-foreground"]
