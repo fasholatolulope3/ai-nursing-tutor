@@ -23,6 +23,8 @@ services:
                 property: connectionString
           - key: APP_URL
             value: https://ai-nursing-tutor.onrender.com
+          - key: NODE_ENV
+            value: production
           - key: SANCTUM_STATEFUL_DOMAINS
             value: ai-nursing-tutor.onrender.com,ai-nursing-tutor.vercel.app
           - key: SESSION_DOMAIN

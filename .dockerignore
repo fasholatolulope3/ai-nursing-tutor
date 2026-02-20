@@ -1,0 +1,13 @@
+.git
+.gitignore
+node_modules
+vendor
+storage/*.key
+.env
+.env.*
+Dockerfile
+render.yaml
+npm-debug.log
+yarn-error.log
+.vscode
+.idea

@@ -22,8 +22,14 @@ const PORT = 3001;
 
 if (!API_KEY) {
     console.error('CRITICAL: GEMINI_API_KEY not found in process.env or .env');
+    console.log('Available process.env keys:', Object.keys(process.env).join(', '));
     // Don't exit immediately on local dev if we might be using process.env
-    if (process.env.NODE_ENV === 'production') process.exit(1);
+    if (process.env.NODE_ENV === 'production') {
+        console.error('Exiting due to missing API_KEY in production.');
+        process.exit(1);
+    }
+} else {
+    console.log('GEMINI_API_KEY detected successfully.');
 }
 
 const server = http.createServer(async (req, res) => {
