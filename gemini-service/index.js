@@ -46,12 +46,16 @@ const server = http.createServer(async (req, res) => {
                 let responseData;
 
                 if (req.url === '/analyze') {
+                    console.log(`[${new Date().toISOString()}] Incoming /analyze request`);
                     responseData = await handleAnalyze(data);
                 } else if (req.url === '/generate-scenario') {
+                    console.log(`[${new Date().toISOString()}] Incoming /generate-scenario request`);
                     responseData = await handleScenario(data);
                 } else if (req.url === '/simulation-turn') {
+                    console.log(`[${new Date().toISOString()}] Incoming /simulation-turn request`);
                     responseData = await handleSimulation(data);
                 } else {
+                    console.log(`[${new Date().toISOString()}] Not Found: ${req.url}`);
                     res.writeHead(404);
                     res.end(JSON.stringify({ error: 'Not Found' }));
                     return;
@@ -93,20 +97,34 @@ async function callGemini(model, systemInstruction, userPrompt, attachment = nul
         }
     };
 
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-    if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Gemini API error (${response.status}): ${errText}`);
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Gemini API error (${response.status}): ${errText}`);
+        }
+
+        const result = await response.json();
+        const rawText = result.candidates[0].content.parts[0].text;
+        return JSON.parse(rawText.replace(/^```json\s*|\s*```$/g, ''));
+    } catch (err) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+            throw new Error('Gemini API request timed out after 30s');
+        }
+        throw err;
     }
-
-    const result = await response.json();
-    const rawText = result.candidates[0].content.parts[0].text;
-    return JSON.parse(rawText.replace(/^```json\s*|\s*```$/g, ''));
 }
 
 async function handleAnalyze({ message, previousSignature, attachment }) {

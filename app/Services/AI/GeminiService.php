@@ -15,7 +15,7 @@ class GeminiService
     public function __construct()
     {
         // Point to the local Node.js proxy server
-        $this->baseUrl = config('services.gemini.proxy_url', 'http://localhost:3001');
+        $this->baseUrl = config('services.gemini.proxy_url', 'http://127.0.0.1:3001');
         $this->apiKey = config('services.gemini.key');
 
         if (empty($this->apiKey)) {
