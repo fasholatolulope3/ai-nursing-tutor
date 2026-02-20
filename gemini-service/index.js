@@ -112,19 +112,19 @@ async function callGemini(model, systemInstruction, userPrompt, attachment = nul
 async function handleAnalyze({ message, previousSignature, attachment }) {
     const system = "You are the 'Clinical Context' AI Nursing Tutor. Output JSON.";
     const user = message + (previousSignature ? `\n[Context]: ${previousSignature}` : '');
-    return callGemini('gemini-1.5-pro', system, user, attachment, 0.4);
+    return callGemini('gemini-3-flash-preview', system, user, attachment, 0.4);
 }
 
 async function handleScenario({ type, difficulty, role, description }) {
     const system = "You are a Clinical Scenario Factory. Output JSON only.";
     const user = `Generate a ${difficulty} ${type} scenario for a ${role}. ${description || ''}`;
-    return callGemini('gemini-1.5-flash', system, user, 0.7);
+    return callGemini('gemini-3-flash-preview', system, user, 0.7);
 }
 
 async function handleSimulation({ scenarioTitle, complexity, initialPatientState, history, message }) {
     const system = `You are a Clinical Simulation Engine. CASE: ${scenarioTitle}`;
     const user = `History: ${JSON.stringify(history)}\nUser: ${message}`;
-    return callGemini('gemini-1.5-pro', system, user, 0.7);
+    return callGemini('gemini-3-flash-preview', system, user, 0.7);
 }
 
 server.listen(PORT, () => {
